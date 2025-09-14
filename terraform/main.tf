@@ -177,3 +177,8 @@ resource "aws_iam_role_policy_attachment" "hackz_ichthyo_ecs_task_execution_role
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "hackz_ichthyo_log_group" {
+  name              = "/ecs/hackz-ichthyo-ecs"
+  retention_in_days = 30
+}
