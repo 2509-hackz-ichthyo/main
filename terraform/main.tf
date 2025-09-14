@@ -1,3 +1,4 @@
+# https://envader.plus/article/431
 locals {
   dev = {
     system = "hackz-ichthyo-ec2"
