@@ -121,7 +121,7 @@ resource "aws_ecs_task_definition" "hackz_ichthyo_ecs_task_definition" {
   container_definitions = jsonencode([
     {
       name      = "hackz-ichthyo-container"
-      image     = "471112951833.dkr.ecr.ap-northeast-1.amazonaws.com/ichthyo:1.0.0"
+      image     = "471112951833.dkr.ecr.ap-northeast-1.amazonaws.com/2509-hackz-ichthyo:1.0.0"
       cpu       = 256
       memory    = 512
       essential = true
