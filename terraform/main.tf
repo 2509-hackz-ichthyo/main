@@ -121,7 +121,7 @@ resource "aws_ecs_task_definition" "hackz_ichthyo_ecs_task_definition" {
   container_definitions = jsonencode([
     {
       name      = "hackz-ichthyo-container"
-      image     = "471112951833.dkr.ecr.ap-northeast-1.amazonaws.com/2509-hackz-ichthyo:1.0.0"
+      image     = "471112951833.dkr.ecr.ap-northeast-1.amazonaws.com/2509-hackz-ichthyo:latest"
       cpu       = 256
       memory    = 512
       essential = true
@@ -145,7 +145,7 @@ resource "aws_ecs_task_definition" "hackz_ichthyo_ecs_task_definition" {
   ])
 
   runtime_platform {
-    cpu_architecture        = "ARM64"
+    cpu_architecture        = "X86_64"
     operating_system_family = "LINUX"
   }
 }
