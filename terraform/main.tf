@@ -9,7 +9,7 @@ locals {
 }
 
 data "aws_ecr_repository" "hackz_ichthyo_ecr_repository" {
-  name = "hackz-ichthyo"
+  name = "2509-hackz-ichthyo"
 }
 
 # ECS Task Execution Role
@@ -25,7 +25,7 @@ data "aws_iam_policy_document" "assume_role_policy" {
 }
 
 # vpc
-resource "aws_vpc" "dev_vpc" {
+resource "aws_vpc" "hackz_ichthyo_vpc" {
   cidr_block           = local.vpc.cidr_block
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -36,8 +36,8 @@ resource "aws_vpc" "dev_vpc" {
 }
 
 # subnet
-resource "aws_subnet" "hackz-ichthyo_subnet_public" {
-  vpc_id                  = aws_vpc.dev_vpc.id
+resource "aws_subnet" "hackz_ichthyo_subnet_public" {
+  vpc_id                  = aws_vpc.hackz_ichthyo_vpc.id
   cidr_block              = local.vpc.subnet_cidr
   availability_zone       = "ap-northeast-1a"
   map_public_ip_on_launch = true
@@ -49,7 +49,7 @@ resource "aws_subnet" "hackz-ichthyo_subnet_public" {
 
 # RouteTable
 resource "aws_route_table" "hackz_ichthyo_route_table" {
-  vpc_id = aws_vpc.dev_vpc.id
+  vpc_id = aws_vpc.hackz_ichthyo_vpc.id
   tags = {
     Name = "hackz-ichthyo-route-table"
   }
