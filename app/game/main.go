@@ -87,11 +87,11 @@ func colorToRGB(c uint8) color.RGBA {
 	// 黒側/白側でコントラストを作成
 	if c < 128 {
 		// 黒側：暗い色
-		return color.RGBA{R: c / 2, G: c, B: c / 2, A: 255}
+		return color.RGBA{R: c, G: c, B: c, A: 255}
 	} else {
 		// 白側：明るい色
 		adjusted := c - 128
-		return color.RGBA{R: 128 + adjusted/2, G: 255, B: 128 + adjusted/2, A: 255}
+		return color.RGBA{R: 128 + adjusted/2, G: 128 + adjusted/2, B: 128 + adjusted/2, A: 255}
 	}
 }
 
