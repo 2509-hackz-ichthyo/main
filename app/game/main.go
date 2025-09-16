@@ -131,34 +131,27 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.GameOver {
 		// 画面中央に勝利メッセージを表示
 		winMessage := fmt.Sprintf("どちらかというと %s の勝利！", g.Winner)
-		
+
 		// メッセージを画面中央に配置
 		screenWidth, screenHeight := 800, 600
 		messageX := float64(screenWidth / 2)
 		messageY := float64(screenHeight / 2)
-		
+
 		// 背景の四角形を描画（見やすくするため）
 		bgX := float32(messageX - 150)
 		bgY := float32(messageY - 30)
 		bgWidth := float32(300)
 		bgHeight := float32(60)
-		
+
 		vector.DrawFilledRect(screen, bgX, bgY, bgWidth, bgHeight, color.RGBA{255, 255, 255, 200}, false)
 		vector.StrokeRect(screen, bgX, bgY, bgWidth, bgHeight, 3, color.Black, false)
-		
+
 		// テキストを描画（ebitenutil.DebugPrintAtを使用）
 		ebitenutil.DebugPrintAt(screen, winMessage, int(messageX-100), int(messageY-10))
 	} else {
-		// 通常のUI情報を描画
-		currentPlayer := g.getCurrentPlayer()
+		// 次の色のプレビューを描画		
 		nextColorRGB := colorToRGB(g.NextColor)
-
-		infoText := fmt.Sprintf("現在のプレイヤー: %s\n次の色: %d\nクリックでコマを配置",
-			currentPlayer, g.NextColor)
-		ebitenutil.DebugPrint(screen, infoText)
-
-		// 次の色のプレビューを描画
-		previewX := float32(BoardOffset + BoardSize*CellSize + 20)
+		previewX := float32(BoardOffset + BoardSize*CellSize + 40)
 		previewY := float32(BoardOffset + 60)
 		vector.DrawFilledCircle(screen, previewX, previewY, 20, nextColorRGB, false)
 		vector.StrokeCircle(screen, previewX, previewY, 20, 2, color.Black, false)
@@ -301,7 +294,7 @@ func (g *Game) calculateWinner() {
 	}
 
 	average := float64(colorSum) / float64(pieceCount)
-	
+
 	// 平均値が127.5未満なら黒、以上なら白の勝利
 	if average < 127.5 {
 		g.Winner = "黒"
@@ -352,7 +345,7 @@ func (g *Game) placePiece(x, y int) bool {
 		// ターンを切り替えて次の色を生成
 		g.switchTurn()
 	}
-	
+
 	return true
 }
 
