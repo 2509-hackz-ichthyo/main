@@ -287,7 +287,7 @@ func (g *Game) placePiece(x, y int) bool {
 
 			a1 := g.NextColor                               // 新しく配置されたコマ
 			a2 := g.Board.Squares[end.X][end.Y].Piece.Color // 遠端の挟んでいるコマ
-			
+
 			// 間のすべてのコマに色変更を適用
 			for _, pos := range line {
 				piece := g.Board.Squares[pos.X][pos.Y].Piece
