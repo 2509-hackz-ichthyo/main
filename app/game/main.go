@@ -93,6 +93,130 @@ func (g *Game) generateNextColor() {
 	}
 }
 
+// isBlackSide returns true if the color belongs to black side (0-127)
+func isBlackSide(color uint8) bool {
+	return color < 128
+}
+
+// isWhiteSide returns true if the color belongs to white side (128-255)
+func isWhiteSide(color uint8) bool {
+	return color >= 128
+}
+
+// switchTurn switches the current turn and generates next color
+func (g *Game) switchTurn() {
+	g.CurrentTurn = !g.CurrentTurn
+	g.generateNextColor()
+}
+
+// getCurrentPlayerSide returns the current player's side as string
+func (g *Game) getCurrentPlayerSide() string {
+	if g.CurrentTurn {
+		return "Black"
+	}
+	return "White"
+}
+
+// Direction represents the 8 directions on the board
+type Direction struct {
+	dx, dy int
+}
+
+var directions = []Direction{
+	{-1, -1}, {-1, 0}, {-1, 1},
+	{0, -1},           {0, 1},
+	{1, -1}, {1, 0}, {1, 1},
+}
+
+// isValidPosition checks if the position is within board bounds
+func isValidPosition(x, y int) bool {
+	return x >= 0 && x < 8 && y >= 0 && y < 8
+}
+
+// findFlankingPieces finds pieces that would be flanked by placing a piece at (x, y)
+func (g *Game) findFlankingPieces(x, y int, color uint8) [][]Position {
+	if !g.Board.Squares[x][y].IsEmpty() {
+		return nil
+	}
+	
+	var flankingLines [][]Position
+	currentSide := isBlackSide(color)
+	
+	for _, dir := range directions {
+		var line []Position
+		nx, ny := x+dir.dx, y+dir.dy
+		
+		// Look for opposite side pieces
+		for isValidPosition(nx, ny) && !g.Board.Squares[nx][ny].IsEmpty() {
+			piece := g.Board.Squares[nx][ny].Piece
+			if isBlackSide(piece.Color) == currentSide {
+				// Found same side piece, this line is valid if we have pieces to flank
+				if len(line) > 0 {
+					flankingLines = append(flankingLines, line)
+				}
+				break
+			} else {
+				// Opposite side piece, add to potential flanking line
+				line = append(line, Position{nx, ny})
+			}
+			nx, ny = nx+dir.dx, ny+dir.dy
+		}
+	}
+	
+	return flankingLines
+}
+
+// Position represents a position on the board
+type Position struct {
+	X, Y int
+}
+
+// isValidMove checks if placing a piece at (x, y) is a valid move
+func (g *Game) isValidMove(x, y int) bool {
+	if !isValidPosition(x, y) || !g.Board.Squares[x][y].IsEmpty() {
+		return false
+	}
+	
+	flankingLines := g.findFlankingPieces(x, y, g.NextColor)
+	return len(flankingLines) > 0
+}
+
+// placePiece places a piece at (x, y) and applies color changes according to the rules
+func (g *Game) placePiece(x, y int) bool {
+	if !g.isValidMove(x, y) {
+		return false
+	}
+	
+	// Place the new piece
+	g.Board.Squares[x][y].Piece = &Piece{Color: g.NextColor}
+	
+	// Find all flanking lines
+	flankingLines := g.findFlankingPieces(x, y, g.NextColor)
+	
+	// Process each flanking line
+	for _, line := range flankingLines {
+		if len(line) > 0 {
+		// Get the flanking pieces
+		end := line[len(line)-1]
+		
+		a1 := g.NextColor // The newly placed piece
+		a2 := g.Board.Squares[end.X][end.Y].Piece.Color // The far flanking piece			// Apply color change to all pieces in between
+			for _, pos := range line {
+				piece := g.Board.Squares[pos.X][pos.Y].Piece
+				b1 := piece.Color
+				
+				// Apply the color change formula: c = (a1 + a2 + b1) / 3
+				newColor := uint8((uint16(a1) + uint16(a2) + uint16(b1)) / 3)
+				piece.Color = newColor
+			}
+		}
+	}
+	
+	// Switch turn and generate next color
+	g.switchTurn()
+	return true
+}
+
 func main() {
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("アンミカリバーシ")
