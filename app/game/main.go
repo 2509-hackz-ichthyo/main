@@ -193,7 +193,7 @@ func isValidPosition(x, y int) bool {
 }
 
 // findFlankingPieces は(x, y)にコマを置いた時に挟まれるコマを見つける
-func (g *Game) findFlankingPieces(x, y int, color uint8) [][]Position {
+func (g *Game) findFlankingPieces(x, y int) [][]Position {
 	if !g.Board.Squares[x][y].IsEmpty() {
 		return nil
 	}
@@ -218,6 +218,7 @@ func (g *Game) findFlankingPieces(x, y int, color uint8) [][]Position {
 		}
 	}
 
+	fmt.Println("Found flanking lines:", flankingLines)
 	return flankingLines
 }
 
@@ -232,7 +233,7 @@ func (g *Game) isValidMove(x, y int) bool {
 		return false
 	}
 
-	flankingLines := g.findFlankingPieces(x, y, g.NextColor)
+	flankingLines := g.findFlankingPieces(x, y)
 	return len(flankingLines) > 0
 }
 
@@ -242,11 +243,9 @@ func (g *Game) placePiece(x, y int) bool {
 		return false
 	}
 
-	// 新しいコマを配置
-	g.Board.Squares[x][y].Piece = &Piece{Color: g.NextColor}
-
 	// すべての挟みラインを見つける
-	flankingLines := g.findFlankingPieces(x, y, g.NextColor)
+	flankingLines := g.findFlankingPieces(x, y)
+	fmt.Println("Flanking Lines:", flankingLines)
 
 	// 各挟みラインを処理
 	for _, line := range flankingLines {
@@ -268,6 +267,9 @@ func (g *Game) placePiece(x, y int) bool {
 			}
 		}
 	}
+
+	// 新しいコマを配置
+	g.Board.Squares[x][y].Piece = &Piece{Color: g.NextColor}
 
 	// ターンを切り替えて次の色を生成
 	g.switchTurn()
