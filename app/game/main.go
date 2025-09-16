@@ -1,12 +1,16 @@
 package main
 
 import (
+	"fmt"
+	"image/color"
 	"log"
 	"math/rand"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // Piece represents a game piece with a color (0-255)
@@ -53,16 +57,98 @@ type Game struct {
 	Rand        *rand.Rand
 }
 
+const (
+	BoardSize   = 8
+	CellSize    = 60
+	BoardOffset = 50
+)
+
 func (g *Game) Update() error {
+	// Handle mouse clicks
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+		
+		// Convert screen coordinates to board coordinates
+		boardX := (mx - BoardOffset) / CellSize
+		boardY := (my - BoardOffset) / CellSize
+		
+		// Check if click is within board bounds and place piece
+		if boardX >= 0 && boardX < BoardSize && boardY >= 0 && boardY < BoardSize {
+			g.placePiece(boardX, boardY)
+		}
+	}
+	
 	return nil
 }
 
+// colorToRGB converts a 0-255 color value to RGB
+func colorToRGB(c uint8) color.RGBA {
+	// Simple color mapping: use the value for green channel, 
+	// and create contrast between black/white sides
+	if c < 128 {
+		// Black side: darker colors
+		return color.RGBA{R: c / 2, G: c, B: c / 2, A: 255}
+	} else {
+		// White side: brighter colors
+		adjusted := c - 128
+		return color.RGBA{R: 128 + adjusted/2, G: 255, B: 128 + adjusted/2, A: 255}
+	}
+}
+
 func (g *Game) Draw(screen *ebiten.Image) {
-	ebitenutil.DebugPrint(screen, "Hello, World!")
+	// Clear screen with light gray
+	screen.Fill(color.RGBA{240, 240, 240, 255})
+	
+	// Draw board grid
+	for i := 0; i <= BoardSize; i++ {
+		x := float32(BoardOffset + i*CellSize)
+		y1 := float32(BoardOffset)
+		y2 := float32(BoardOffset + BoardSize*CellSize)
+		
+		// Vertical lines
+		vector.StrokeLine(screen, x, y1, x, y2, 2, color.Black, false)
+		
+		// Horizontal lines
+		y := float32(BoardOffset + i*CellSize)
+		x1 := float32(BoardOffset)
+		x2 := float32(BoardOffset + BoardSize*CellSize)
+		vector.StrokeLine(screen, x1, y, x2, y, 2, color.Black, false)
+	}
+	
+	// Draw pieces
+	for x := 0; x < BoardSize; x++ {
+		for y := 0; y < BoardSize; y++ {
+			if !g.Board.Squares[x][y].IsEmpty() {
+				piece := g.Board.Squares[x][y].Piece
+				pieceColor := colorToRGB(piece.Color)
+				
+				centerX := float32(BoardOffset + x*CellSize + CellSize/2)
+				centerY := float32(BoardOffset + y*CellSize + CellSize/2)
+				radius := float32(CellSize/2 - 4)
+				
+				vector.DrawFilledCircle(screen, centerX, centerY, radius, pieceColor, false)
+				vector.StrokeCircle(screen, centerX, centerY, radius, 2, color.Black, false)
+			}
+		}
+	}
+	
+	// Draw UI information
+	currentPlayer := g.getCurrentPlayerSide()
+	nextColorRGB := colorToRGB(g.NextColor)
+	
+	infoText := fmt.Sprintf("Current Player: %s\nNext Color: %d\nClick to place piece", 
+		currentPlayer, g.NextColor)
+	ebitenutil.DebugPrint(screen, infoText)
+	
+	// Draw next color preview
+	previewX := float32(BoardOffset + BoardSize*CellSize + 20)
+	previewY := float32(BoardOffset + 60)
+	vector.DrawFilledCircle(screen, previewX, previewY, 20, nextColorRGB, false)
+	vector.StrokeCircle(screen, previewX, previewY, 20, 2, color.Black, false)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 320, 240
+	return 800, 600
 }
 
 // NewGame creates a new game instance
@@ -218,7 +304,7 @@ func (g *Game) placePiece(x, y int) bool {
 }
 
 func main() {
-	ebiten.SetWindowSize(640, 480)
+	ebiten.SetWindowSize(800, 600)
 	ebiten.SetWindowTitle("アンミカリバーシ")
 	if err := ebiten.RunGame(NewGame()); err != nil {
 		log.Fatal(err)
