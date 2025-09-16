@@ -7,9 +7,27 @@ resource "aws_s3_bucket" "hackz_ichthyo_bucket" {
 }
 
 resource "aws_s3_object" "hackz_ichthyo_object" {
-  bucket  = aws_s3_bucket.hackz_ichthyo_bucket.id
-  key     = "index.html"
-  content = "Hello, Hackz Ichthyo!"
+  bucket       = aws_s3_bucket.hackz_ichthyo_bucket.id
+  key          = "index.html"
+  source       = "../app/index.html"
+  content_type = "text/html"
+  etag         = filemd5("../app/index.html")
+}
+
+resource "aws_s3_object" "wasm_exec_js" {
+  bucket       = aws_s3_bucket.hackz_ichthyo_bucket.id
+  key          = "wasm_exec.js"
+  source       = "../app/wasm_exec.js"
+  content_type = "application/javascript"
+  etag         = filemd5("../app/wasm_exec.js")
+}
+
+resource "aws_s3_object" "main_wasm" {
+  bucket       = aws_s3_bucket.hackz_ichthyo_bucket.id
+  key          = "main.wasm"
+  source       = "../app/main.wasm"
+  content_type = "application/wasm"
+  etag         = filemd5("../app/main.wasm")
 }
 
 resource "aws_s3_bucket_policy" "policy" {
