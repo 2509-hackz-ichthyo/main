@@ -155,17 +155,71 @@ resource "aws_apigatewayv2_stage" "hackz_ichthyo_stage" {
   }
 }
 
+# Data source to create ZIP file for disconnect Lambda
+data "archive_file" "lambda_disconnect_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/disconnect_handler"
+  output_path = "${path.module}/lambda/disconnect_handler.zip"
+}
+
+# Lambda function for WebSocket $disconnect route
+resource "aws_lambda_function" "hackz_ichthyo_disconnect_handler" {
+  filename         = data.archive_file.lambda_disconnect_zip.output_path
+  function_name    = "hackz-ichthyo-websocket-disconnect"
+  role            = aws_iam_role.lambda_websocket_role.arn
+  handler         = "bootstrap"
+  runtime         = "provided.al2"
+  timeout         = 30
+
+  source_code_hash = data.archive_file.lambda_disconnect_zip.output_base64sha256
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.websocket_connections.name
+    }
+  }
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
 # Output WebSocket URL
 output "websocket_url" {
   description = "WebSocket API URL"
   value       = "${aws_apigatewayv2_api.hackz_ichthyo_websocket.api_endpoint}/production"
 }
 
-# permission for exec lambda
+# Lambda integration for $disconnect
+resource "aws_apigatewayv2_integration" "hackz_ichthyo_disconnect_integration" {
+  api_id             = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+  integration_uri    = aws_lambda_function.hackz_ichthyo_disconnect_handler.invoke_arn
+}
+
+# $disconnect route
+resource "aws_apigatewayv2_route" "hackz_ichthyo_disconnect" {
+  api_id    = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
+  route_key = "$disconnect"
+  target    = "integrations/${aws_apigatewayv2_integration.hackz_ichthyo_disconnect_integration.id}"
+}
+
+# permission for exec lambda (connect)
 resource "aws_lambda_permission" "connect_handler" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.hackz_ichthyo_connect_handler.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/$connect"
+}
+
+# permission for exec lambda (disconnect)
+resource "aws_lambda_permission" "disconnect_handler" {
+  statement_id  = "AllowDisconnectExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.hackz_ichthyo_disconnect_handler.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/$disconnect"
 }
