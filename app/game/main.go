@@ -57,8 +57,8 @@ type Game struct {
 	CurrentTurn bool  // trueが黒 (0-127)、falseが白 (128-255)
 	NextColor   uint8 // 次に配置するコマの色
 	Rand        *rand.Rand
-	GameOver    bool   // ゲーム終了フラグ
-	Winner      string // 勝者（"黒" または "白"）
+	GameOver    bool             // ゲーム終了フラグ
+	Winner      string           // 勝者（"黒" または "白"）
 	FontFace    *text.GoTextFace // 勝利メッセージ用フォント
 }
 
@@ -144,12 +144,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		// メッセージを画面中央に配置
 		screenWidth, screenHeight := 800, 600
 		messageX := float64(screenWidth/2) - textWidth/2
-		messageY := float64(screenHeight/2) + textHeight/2
+		messageY := float64(screenHeight/2) - textHeight/2
 
 		// 背景の四角形を描画（見やすくするため）
 		bgPadding := float32(20)
 		bgX := float32(messageX) - bgPadding
-		bgY := float32(messageY) - float32(textHeight) - bgPadding
+		bgY := float32(messageY) - bgPadding
 		bgWidth := float32(textWidth) + bgPadding*2
 		bgHeight := float32(textHeight) + bgPadding*2
 
@@ -162,7 +162,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		textOptions.ColorScale.ScaleWithColor(color.Black)
 		text.Draw(screen, winMessage, g.FontFace, textOptions)
 	} else {
-		// 次の色のプレビューを描画		
+		// 次の色のプレビューを描画
 		nextColorRGB := colorToRGB(g.NextColor)
 		previewX := float32(BoardOffset + BoardSize*CellSize + 40)
 		previewY := float32(BoardOffset + 60)
