@@ -39,12 +39,12 @@ func NewBoard() *Board {
 
 	// 中央に開始時のコマを配置
 	// 黒側 (0-127) のコマ
-	board.Squares[3][3].Piece = &Piece{Color: 63} // 黒のコマ
-	board.Squares[4][4].Piece = &Piece{Color: 63} // 黒のコマ
+	board.Squares[3][3].Piece = &Piece{Color: 0} // 黒のコマ
+	board.Squares[4][4].Piece = &Piece{Color: 0} // 黒のコマ
 
 	// 白側 (128-255) のコマ
-	board.Squares[3][4].Piece = &Piece{Color: 191} // 白のコマ
-	board.Squares[4][3].Piece = &Piece{Color: 191} // 白のコマ
+	board.Squares[3][4].Piece = &Piece{Color: 255} // 白のコマ
+	board.Squares[4][3].Piece = &Piece{Color: 255} // 白のコマ
 
 	return board
 }
