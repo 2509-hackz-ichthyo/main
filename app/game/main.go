@@ -83,16 +83,7 @@ func (g *Game) Update() error {
 
 // colorToRGB は0-255の色値をRGBに変換する
 func colorToRGB(c uint8) color.RGBA {
-	// シンプルな色マッピング：緑チャンネルに値を使用し、
-	// 黒側/白側でコントラストを作成
-	if c < 128 {
-		// 黒側：暗い色
-		return color.RGBA{R: c, G: c, B: c, A: 255}
-	} else {
-		// 白側：明るい色
-		adjusted := c - 128
-		return color.RGBA{R: 128 + adjusted/2, G: 128 + adjusted/2, B: 128 + adjusted/2, A: 255}
-	}
+	return color.RGBA{R: c, G: c, B: c, A: 255}
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
