@@ -214,6 +214,8 @@ func (g *Game) findFlankingPieces(x, y int) [][]Position {
 		// ラインに少なくとも2つのコマがある場合、挟みが成立
 		// （最低でも1つのコマを挟み、もう1つで終端とする）
 		if len(line) >= 2 {
+			// 最奥のコマは対象から外す
+			line = line[:len(line)-1]
 			flankingLines = append(flankingLines, line)
 		}
 	}
