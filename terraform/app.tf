@@ -8,7 +8,7 @@ resource "aws_s3_bucket" "hackz_ichthyo_bucket" {
 
 resource "aws_s3_object" "hackz_ichthyo_object" {
   bucket  = aws_s3_bucket.hackz_ichthyo_bucket.id
-  key     = "../app/index.html"
+  key     = "index.html"
   content = "Hello, Hackz Ichthyo!"
 }
 
@@ -41,7 +41,7 @@ data "aws_iam_policy_document" "policy_document" {
 
 resource "aws_cloudfront_distribution" "hackz_ichthyo_cfront" {
   enabled             = true
-  default_root_object = "../app/index.html"
+  default_root_object = "index.html"
 
   origin {
     origin_id                = aws_s3_bucket.hackz_ichthyo_bucket.id
