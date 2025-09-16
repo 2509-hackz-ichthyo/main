@@ -30,5 +30,5 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
   - `golang:1.24.1-alpine` ベース、`/app/main` 実行
 - デプロイ: ECR に push → ECS サービスで `--force-new-deployment`
 - ディレクトリ構成（抜粋）:
-  - `api/main.go` … HTTP サーバの起動
-  - `api/ws/` … 将来のリアルタイム処理（現在プレースホルダ）
+  - `api/main.go`: HTTP サーバの起動
+  - `api/ws/`: Whitespace のインタプリタ（デコーダ）
