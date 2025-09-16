@@ -156,7 +156,7 @@ resource "aws_ecs_service" "hackz_ichthyo_ecs_service" {
   name            = "hackz-ichthyo-ecs-service"
   cluster         = aws_ecs_cluster.hackz_ichthyo_ecs_cluster.id
   task_definition = aws_ecs_task_definition.hackz_ichthyo_ecs_task_definition.arn
-  desired_count   = 1
+  desired_count   = 0  # Temporarily stopped
   launch_type     = "FARGATE"
 
   network_configuration {
