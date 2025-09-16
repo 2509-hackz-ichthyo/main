@@ -52,6 +52,8 @@ type Game struct {
 	CurrentTurn bool  // trueが黒 (0-127)、falseが白 (128-255)
 	NextColor   uint8 // 次に配置するコマの色
 	Rand        *rand.Rand
+	GameOver    bool   // ゲーム終了フラグ
+	Winner      string // 勝者（"黒" または "白"）
 }
 
 const (
@@ -61,6 +63,11 @@ const (
 )
 
 func (g *Game) Update() error {
+	// ゲーム終了後は入力を受け付けない
+	if g.GameOver {
+		return nil
+	}
+
 	// マウスクリックを処理
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		mx, my := ebiten.CursorPosition()
@@ -120,19 +127,42 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// UI情報を描画
-	currentPlayer := g.getCurrentPlayer()
-	nextColorRGB := colorToRGB(g.NextColor)
+	// ゲーム終了時の勝利メッセージ表示
+	if g.GameOver {
+		// 画面中央に勝利メッセージを表示
+		winMessage := fmt.Sprintf("どちらかというと %s の勝利！", g.Winner)
+		
+		// メッセージを画面中央に配置
+		screenWidth, screenHeight := 800, 600
+		messageX := float64(screenWidth / 2)
+		messageY := float64(screenHeight / 2)
+		
+		// 背景の四角形を描画（見やすくするため）
+		bgX := float32(messageX - 150)
+		bgY := float32(messageY - 30)
+		bgWidth := float32(300)
+		bgHeight := float32(60)
+		
+		vector.DrawFilledRect(screen, bgX, bgY, bgWidth, bgHeight, color.RGBA{255, 255, 255, 200}, false)
+		vector.StrokeRect(screen, bgX, bgY, bgWidth, bgHeight, 3, color.Black, false)
+		
+		// テキストを描画（ebitenutil.DebugPrintAtを使用）
+		ebitenutil.DebugPrintAt(screen, winMessage, int(messageX-100), int(messageY-10))
+	} else {
+		// 通常のUI情報を描画
+		currentPlayer := g.getCurrentPlayer()
+		nextColorRGB := colorToRGB(g.NextColor)
 
-	infoText := fmt.Sprintf("現在のプレイヤー: %s\n次の色: %d\nクリックでコマを配置",
-		currentPlayer, g.NextColor)
-	ebitenutil.DebugPrint(screen, infoText)
+		infoText := fmt.Sprintf("現在のプレイヤー: %s\n次の色: %d\nクリックでコマを配置",
+			currentPlayer, g.NextColor)
+		ebitenutil.DebugPrint(screen, infoText)
 
-	// 次の色のプレビューを描画
-	previewX := float32(BoardOffset + BoardSize*CellSize + 20)
-	previewY := float32(BoardOffset + 60)
-	vector.DrawFilledCircle(screen, previewX, previewY, 20, nextColorRGB, false)
-	vector.StrokeCircle(screen, previewX, previewY, 20, 2, color.Black, false)
+		// 次の色のプレビューを描画
+		previewX := float32(BoardOffset + BoardSize*CellSize + 20)
+		previewY := float32(BoardOffset + 60)
+		vector.DrawFilledCircle(screen, previewX, previewY, 20, nextColorRGB, false)
+		vector.StrokeCircle(screen, previewX, previewY, 20, 2, color.Black, false)
+	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
@@ -239,6 +269,47 @@ func (g *Game) isValidMove(x, y int) bool {
 	return len(flankingLines) > 0
 }
 
+// isBoardFull は全てのマスが埋まっているかを判定する
+func (g *Game) isBoardFull() bool {
+	for x := 0; x < BoardSize; x++ {
+		for y := 0; y < BoardSize; y++ {
+			if g.Board.Squares[x][y].IsEmpty() {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// calculateWinner は全駒の色の平均値から勝者を決定する
+func (g *Game) calculateWinner() {
+	var colorSum int
+	var pieceCount int
+
+	for x := 0; x < BoardSize; x++ {
+		for y := 0; y < BoardSize; y++ {
+			if !g.Board.Squares[x][y].IsEmpty() {
+				colorSum += int(g.Board.Squares[x][y].Piece.Color)
+				pieceCount++
+			}
+		}
+	}
+
+	if pieceCount == 0 {
+		g.Winner = "引き分け"
+		return
+	}
+
+	average := float64(colorSum) / float64(pieceCount)
+	
+	// 平均値が127.5未満なら黒、以上なら白の勝利
+	if average < 127.5 {
+		g.Winner = "黒"
+	} else {
+		g.Winner = "白"
+	}
+}
+
 // placePiece は(x, y)にコマを置き、ルールに従って色変更を適用する
 func (g *Game) placePiece(x, y int) bool {
 	if !g.isValidMove(x, y) {
@@ -273,8 +344,15 @@ func (g *Game) placePiece(x, y int) bool {
 	// 新しいコマを配置
 	g.Board.Squares[x][y].Piece = &Piece{Color: g.NextColor}
 
-	// ターンを切り替えて次の色を生成
-	g.switchTurn()
+	// ゲーム終了判定
+	if g.isBoardFull() {
+		g.GameOver = true
+		g.calculateWinner()
+	} else {
+		// ターンを切り替えて次の色を生成
+		g.switchTurn()
+	}
+	
 	return true
 }
 
