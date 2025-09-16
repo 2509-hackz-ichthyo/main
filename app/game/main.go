@@ -38,13 +38,10 @@ func NewBoard() *Board {
 	board := &Board{}
 
 	// 中央に開始時のコマを配置
-	// 黒側 (0-127) のコマ
-	board.Squares[3][3].Piece = &Piece{Color: 0} // 黒のコマ
-	board.Squares[4][4].Piece = &Piece{Color: 0} // 黒のコマ
-
-	// 白側 (128-255) のコマ
-	board.Squares[3][4].Piece = &Piece{Color: 255} // 白のコマ
-	board.Squares[4][3].Piece = &Piece{Color: 255} // 白のコマ
+	board.Squares[3][3].Piece = &Piece{Color: 0}   // 初期コマ（黒色）
+	board.Squares[4][4].Piece = &Piece{Color: 0}   // 初期コマ（黒色）
+	board.Squares[3][4].Piece = &Piece{Color: 255} // 初期コマ（白色）
+	board.Squares[4][3].Piece = &Piece{Color: 255} // 初期コマ（白色）
 
 	return board
 }
@@ -124,7 +121,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// UI情報を描画
-	currentPlayer := g.getCurrentPlayerSide()
+	currentPlayer := g.getCurrentPlayer()
 	nextColorRGB := colorToRGB(g.NextColor)
 
 	infoText := fmt.Sprintf("現在のプレイヤー: %s\n次の色: %d\nクリックでコマを配置",
@@ -149,7 +146,7 @@ func NewGame() *Game {
 
 	game := &Game{
 		Board:       NewBoard(),
-		CurrentTurn: true, // 黒から開始
+		CurrentTurn: true, // プレイヤー1から開始
 		Rand:        r,
 	}
 
@@ -159,25 +156,10 @@ func NewGame() *Game {
 	return game
 }
 
-// generateNextColor は現在のターンに基づいて次のコマの色を生成する
+// generateNextColor はランダムに次のコマの色を生成する
 func (g *Game) generateNextColor() {
-	if g.CurrentTurn {
-		// 黒側: 0-127
-		g.NextColor = uint8(g.Rand.Intn(128))
-	} else {
-		// 白側: 128-255
-		g.NextColor = uint8(128 + g.Rand.Intn(128))
-	}
-}
-
-// isBlackSide は色が黒側 (0-127) に属するかを返す
-func isBlackSide(color uint8) bool {
-	return color < 128
-}
-
-// isWhiteSide は色が白側 (128-255) に属するかを返す
-func isWhiteSide(color uint8) bool {
-	return color >= 128
+	// 0-255の全範囲からランダムに色を生成
+	g.NextColor = uint8(g.Rand.Intn(256))
 }
 
 // switchTurn はターンを切り替えて次の色を生成する
@@ -186,12 +168,12 @@ func (g *Game) switchTurn() {
 	g.generateNextColor()
 }
 
-// getCurrentPlayerSide は現在のプレイヤーの側を文字列で返す
-func (g *Game) getCurrentPlayerSide() string {
+// getCurrentPlayer は現在のプレイヤー番号を文字列で返す
+func (g *Game) getCurrentPlayer() string {
 	if g.CurrentTurn {
-		return "黒"
+		return "プレイヤー1"
 	}
-	return "白"
+	return "プレイヤー2"
 }
 
 // Direction はボード上の8方向を表す
@@ -217,26 +199,22 @@ func (g *Game) findFlankingPieces(x, y int, color uint8) [][]Position {
 	}
 
 	var flankingLines [][]Position
-	currentSide := isBlackSide(color)
 
 	for _, dir := range directions {
 		var line []Position
 		nx, ny := x+dir.dx, y+dir.dy
 
-		// 反対側のコマを探す
+		// この方向にコマがあるかを探す
 		for isValidPosition(nx, ny) && !g.Board.Squares[nx][ny].IsEmpty() {
-			piece := g.Board.Squares[nx][ny].Piece
-			if isBlackSide(piece.Color) == currentSide {
-				// 同じ側のコマを発見、挟むコマがあればこのラインは有効
-				if len(line) > 0 {
-					flankingLines = append(flankingLines, line)
-				}
-				break
-			} else {
-				// 反対側のコマ、潜在的な挟みラインに追加
-				line = append(line, Position{nx, ny})
-			}
+			// コマを潜在的な挟みラインに追加
+			line = append(line, Position{nx, ny})
 			nx, ny = nx+dir.dx, ny+dir.dy
+		}
+
+		// ラインに少なくとも2つのコマがある場合、挟みが成立
+		// （最低でも1つのコマを挟み、もう1つで終端とする）
+		if len(line) >= 2 {
+			flankingLines = append(flankingLines, line)
 		}
 	}
 
