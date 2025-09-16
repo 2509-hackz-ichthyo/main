@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
 	"image/color"
 	"log"
@@ -8,10 +10,13 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
+
+//go:embed DotGothic16-Regular.ttf
+var fontData []byte
 
 // Piece は0-255の色を持つゲームの駒を表す
 type Piece struct {
@@ -54,6 +59,7 @@ type Game struct {
 	Rand        *rand.Rand
 	GameOver    bool   // ゲーム終了フラグ
 	Winner      string // 勝者（"黒" または "白"）
+	FontFace    *text.GoTextFace // 勝利メッセージ用フォント
 }
 
 const (
@@ -128,26 +134,33 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// ゲーム終了時の勝利メッセージ表示
-	if g.GameOver {
+	if g.GameOver && g.FontFace != nil {
 		// 画面中央に勝利メッセージを表示
 		winMessage := fmt.Sprintf("どちらかというと %s の勝利！", g.Winner)
 
+		// テキストの大きさを測定
+		textWidth, textHeight := text.Measure(winMessage, g.FontFace, 0)
+
 		// メッセージを画面中央に配置
 		screenWidth, screenHeight := 800, 600
-		messageX := float64(screenWidth / 2)
-		messageY := float64(screenHeight / 2)
+		messageX := float64(screenWidth/2) - textWidth/2
+		messageY := float64(screenHeight/2) + textHeight/2
 
 		// 背景の四角形を描画（見やすくするため）
-		bgX := float32(messageX - 150)
-		bgY := float32(messageY - 30)
-		bgWidth := float32(300)
-		bgHeight := float32(60)
+		bgPadding := float32(20)
+		bgX := float32(messageX) - bgPadding
+		bgY := float32(messageY) - float32(textHeight) - bgPadding
+		bgWidth := float32(textWidth) + bgPadding*2
+		bgHeight := float32(textHeight) + bgPadding*2
 
-		vector.DrawFilledRect(screen, bgX, bgY, bgWidth, bgHeight, color.RGBA{255, 255, 255, 200}, false)
+		vector.DrawFilledRect(screen, bgX, bgY, bgWidth, bgHeight, color.RGBA{255, 255, 255, 240}, false)
 		vector.StrokeRect(screen, bgX, bgY, bgWidth, bgHeight, 3, color.Black, false)
 
-		// テキストを描画（ebitenutil.DebugPrintAtを使用）
-		ebitenutil.DebugPrintAt(screen, winMessage, int(messageX-100), int(messageY-10))
+		// テキストを描画
+		textOptions := &text.DrawOptions{}
+		textOptions.GeoM.Translate(messageX, messageY)
+		textOptions.ColorScale.ScaleWithColor(color.Black)
+		text.Draw(screen, winMessage, g.FontFace, textOptions)
 	} else {
 		// 次の色のプレビューを描画		
 		nextColorRGB := colorToRGB(g.NextColor)
@@ -176,7 +189,27 @@ func NewGame() *Game {
 	// 最初の手の色を生成
 	game.generateNextColor()
 
+	// フォントを初期化
+	if err := game.initializeFont(); err != nil {
+		log.Printf("Failed to initialize font: %v", err)
+	}
+
 	return game
+}
+
+// initializeFont はフォントを初期化する
+func (g *Game) initializeFont() error {
+	fontSource, err := text.NewGoTextFaceSource(bytes.NewReader(fontData))
+	if err != nil {
+		return fmt.Errorf("failed to create font source: %v", err)
+	}
+
+	g.FontFace = &text.GoTextFace{
+		Source: fontSource,
+		Size:   32,
+	}
+
+	return nil
 }
 
 // generateNextColor はランダムに次のコマの色を生成する
