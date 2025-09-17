@@ -278,9 +278,15 @@ resource "aws_lambda_function" "hackz_ichthyo_disconnect_handler" {
   }
 }
 
-# Output WebSocket URL
+# Output WebSocket URL (カスタムドメイン)
 output "websocket_url" {
-  description = "WebSocket API URL"
+  description = "WebSocket API URL (カスタムドメイン)"
+  value       = "wss://${aws_apigatewayv2_domain_name.websocket_custom_domain.domain_name}/${aws_apigatewayv2_stage.hackz_ichthyo_stage.name}"
+}
+
+# Output WebSocket URL (デフォルト)
+output "websocket_url_default" {
+  description = "WebSocket API URL (デフォルト)"
   value       = "${aws_apigatewayv2_api.hackz_ichthyo_websocket.api_endpoint}/production"
 }
 
@@ -539,6 +545,38 @@ resource "aws_lambda_permission" "allow_eventbridge_cleanup" {
   source_arn    = aws_cloudwatch_event_rule.cleanup_schedule.arn
 }
 
+# 証明書検証の完了確認
+resource "aws_acm_certificate_validation" "websocket_cert_validation" {
+  certificate_arn = aws_acm_certificate.websocket_cert.arn
+  
+  timeouts {
+    create = "10m"  # 最大10分間検証を待機
+  }
+}
+
+# API Gateway カスタムドメイン
+resource "aws_apigatewayv2_domain_name" "websocket_custom_domain" {
+  domain_name = "2509-hackz-ichthyo.ulxsth.com"
+
+  domain_name_configuration {
+    certificate_arn = aws_acm_certificate_validation.websocket_cert_validation.certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+  
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
+# API マッピング
+resource "aws_apigatewayv2_api_mapping" "websocket_mapping" {
+  api_id      = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
+  domain_name = aws_apigatewayv2_domain_name.websocket_custom_domain.id
+  stage       = aws_apigatewayv2_stage.hackz_ichthyo_stage.id
+}
+
 # ACM証明書ARNの出力
 output "acm_certificate_arn" {
   description = "ACM証明書のARN"
@@ -553,5 +591,14 @@ output "acm_dns_validation_info" {
       validation_value  = dvo.resource_record_value
       validation_type   = dvo.resource_record_type
     }
+  }
+}
+
+# API Gateway ターゲットドメイン情報の出力
+output "api_gateway_target_domain" {
+  description = "CloudflareのCNAMEレコードに設定するターゲットドメイン"
+  value = {
+    target_domain_name = aws_apigatewayv2_domain_name.websocket_custom_domain.domain_name_configuration[0].target_domain_name
+    hosted_zone_id     = aws_apigatewayv2_domain_name.websocket_custom_domain.domain_name_configuration[0].hosted_zone_id
   }
 }
