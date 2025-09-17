@@ -101,8 +101,7 @@ curl -s http://localhost:3000/healthz
 ## Whitespace → 10 進数
 
 ```
-curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
--d '{"command_type":"WhitespaceToDecimal","payload":["   \t \t\t\n    \t\t \n   \t\t \t  \t \n","       \n       \n           \n"]}'
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"WhitespaceToDecimal","payload":["   \t \t\t\n    \t\t \n   \t\t \t  \t \n","       \n       \n           \n"]}'
 ```
 
 - レスポンス例: 成功
@@ -116,20 +115,18 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
   CR 改行(%0D) や、 CRLF 改行(%0D%0A) でも動作します。
 
 ```
-curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
--d '{"command_type":"WhitespaceToBinary","payload":["%20%20%20%09%20%09%09%0A%20%20%20%20%09%09%20%0A%20%20%20%09%09%20%09%20%20%09%20%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A"]}'
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"WhitespaceToBinary","payload":["%20%20%20%09%20%09%09%0A%20%20%20%20%09%09%20%0A%20%20%20%09%09%20%09%20%20%09%20%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A"]}'
 ```
 
 - レスポンス例: 成功
   ```
-  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["1011011011010010", "0000000000000000"],"binary_string":"1011011011010010 0000000000000000"}
+  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["1011011011010010","0000000000000000"],"binary_string":"1011011011010010 0000000000000000"}
   ```
 
 ## 10 進数 → Whitespace
 
 ```
-curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
--d '{"command_type":"DecimalToWhitespace","payload":["8346","0"]}'
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"DecimalToWhitespace","payload":["8346","0"]}'
 ```
 
 - レスポンス例: 成功
@@ -140,8 +137,7 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 ## 2 進数 → Whitespace
 
 ```
-curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
--d '{"command_type":"BinariesToWhitespace","payload":["1011011011010010","0000000000000000"]}'
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"BinariesToWhitespace","payload":["1011011011010010","0000000000000000"]}'
 ```
 
 - レスポンス例: 成功
