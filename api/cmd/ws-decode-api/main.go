@@ -11,7 +11,6 @@ import (
 
 	"github.com/2509-hackz-ichthyo/main/api/internal/app"
 	"github.com/2509-hackz-ichthyo/main/api/internal/config"
-	"github.com/2509-hackz-ichthyo/main/api/internal/domain"
 	"github.com/2509-hackz-ichthyo/main/api/internal/server/httpserver"
 )
 
@@ -25,9 +24,7 @@ func main() {
 		log.Fatalf("設定の読み込みに失敗しました: %v", err)
 	}
 
-	decoder := domain.NewWhitespaceDecoder()
-	encoder := domain.NewWhitespaceEncoder()
-	usecase := app.NewWhitespaceUsecase(decoder, encoder)
+	usecase := app.NewWhitespaceUsecase()
 	router := httpserver.NewRouter(usecase)
 
 	srv := &http.Server{

@@ -4,18 +4,17 @@ import (
 	"context"
 	"errors"
 	"testing"
-
-	"github.com/2509-hackz-ichthyo/main/api/internal/domain"
 )
 
-func TestWhitespaceUsecaseExecuteDecimalToWhitespace(t *testing.T) {
+func TestWhitespaceUsecaseWhitespaceToBinary(t *testing.T) {
 	t.Parallel()
 
-	usecase := NewWhitespaceUsecase(domain.NewWhitespaceDecoder(), domain.NewWhitespaceEncoder())
+	usecase := NewWhitespaceUsecase()
 
+	sentence := "   \t \t\t\n    \t\t \n   \t\t \t  \t \n"
 	command := WhitespaceCommand{
-		CommandType: string(domain.CommandTypeDecimalToWhitespace),
-		Payload:     "32 9 10",
+		CommandType: "WhitespaceToBinary",
+		Payload:     []string{sentence},
 	}
 
 	result, err := usecase.Execute(context.Background(), command)
@@ -23,27 +22,28 @@ func TestWhitespaceUsecaseExecuteDecimalToWhitespace(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result.ResultWhitespace == nil {
-		t.Fatalf("expected whitespace result")
+	if len(result.ResultBinaries) != 1 {
+		t.Fatalf("expected 1 binary result, got %d", len(result.ResultBinaries))
 	}
 
-	if *result.ResultWhitespace != " \t\n" {
-		t.Fatalf("unexpected whitespace result: %q", *result.ResultWhitespace)
-	}
-
-	if result.ResultWhitespaceEncoded == nil || *result.ResultWhitespaceEncoded != "%20%09%0A" {
-		t.Fatalf("unexpected encoded whitespace: %v", result.ResultWhitespaceEncoded)
+	if result.ResultBinaries[0] != "1011011011010010" {
+		t.Fatalf("unexpected binary string: %s", result.ResultBinaries[0])
 	}
 }
 
-func TestWhitespaceUsecaseExecuteWhitespaceToDecimal(t *testing.T) {
+func TestWhitespaceUsecaseWhitespaceToDecimal(t *testing.T) {
 	t.Parallel()
 
-	usecase := NewWhitespaceUsecase(domain.NewWhitespaceDecoder(), domain.NewWhitespaceEncoder())
+	usecase := NewWhitespaceUsecase()
+
+	sentences := []string{
+		"   \t \t\t\n    \t\t \n   \t\t \t  \t \n",
+		"       \n       \n           \n",
+	}
 
 	command := WhitespaceCommand{
-		CommandType: string(domain.CommandTypeWhitespaceToDecimal),
-		Payload:     " \t\n",
+		CommandType: "WhitespaceToDecimal",
+		Payload:     sentences,
 	}
 
 	result, err := usecase.Execute(context.Background(), command)
@@ -51,26 +51,25 @@ func TestWhitespaceUsecaseExecuteWhitespaceToDecimal(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := []int{32, 9, 10}
-	if len(result.ResultDecimals) != len(want) {
-		t.Fatalf("unexpected decimals length: got %d want %d", len(result.ResultDecimals), len(want))
-	}
-
-	for i, value := range want {
-		if result.ResultDecimals[i] != value {
-			t.Fatalf("unexpected decimal at %d: got %d want %d", i, result.ResultDecimals[i], value)
+	if got, want := result.ResultDecimals, []string{"46802", "0"}; len(got) != len(want) {
+		t.Fatalf("unexpected decimals length: got %d want %d", len(got), len(want))
+	} else {
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("unexpected decimal at %d: got %s want %s", i, got[i], want[i])
+			}
 		}
 	}
 }
 
-func TestWhitespaceUsecaseExecuteWhitespaceToBinary(t *testing.T) {
+func TestWhitespaceUsecaseDecimalToWhitespace(t *testing.T) {
 	t.Parallel()
 
-	usecase := NewWhitespaceUsecase(domain.NewWhitespaceDecoder(), domain.NewWhitespaceEncoder())
+	usecase := NewWhitespaceUsecase()
 
 	command := WhitespaceCommand{
-		CommandType: string(domain.CommandTypeWhitespaceToBinary),
-		Payload:     "       \n   \t\t\t\t\n",
+		CommandType: "DecimalToWhitespace",
+		Payload:     []string{"46802"},
 	}
 
 	result, err := usecase.Execute(context.Background(), command)
@@ -78,22 +77,43 @@ func TestWhitespaceUsecaseExecuteWhitespaceToBinary(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := []string{"0000", "1111"}
-	if len(result.ResultBinaries) != len(want) {
-		t.Fatalf("unexpected binaries length: got %d want %d", len(result.ResultBinaries), len(want))
+	expected := "   \t \t\t\n    \t\t \n   \t\t \t  \t \n"
+	if len(result.ResultWhitespace) != 1 {
+		t.Fatalf("unexpected whitespace length: %d", len(result.ResultWhitespace))
+	}
+	if result.ResultWhitespace[0] != expected {
+		t.Fatalf("unexpected whitespace output: %q", result.ResultWhitespace[0])
+	}
+}
+
+func TestWhitespaceUsecaseBinaryToWhitespace(t *testing.T) {
+	t.Parallel()
+
+	usecase := NewWhitespaceUsecase()
+
+	command := WhitespaceCommand{
+		CommandType: "BinariesToWhitespace",
+		Payload:     []string{"1011011011010010"},
 	}
 
-	for i, value := range want {
-		if result.ResultBinaries[i] != value {
-			t.Fatalf("unexpected binary at %d: got %s want %s", i, result.ResultBinaries[i], value)
-		}
+	result, err := usecase.Execute(context.Background(), command)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "   \t \t\t\n    \t\t \n   \t\t \t  \t \n"
+	if len(result.ResultWhitespace) != 1 {
+		t.Fatalf("unexpected whitespace length: %d", len(result.ResultWhitespace))
+	}
+	if result.ResultWhitespace[0] != expected {
+		t.Fatalf("unexpected whitespace output: %q", result.ResultWhitespace[0])
 	}
 }
 
 func TestWhitespaceUsecaseValidation(t *testing.T) {
 	t.Parallel()
 
-	usecase := NewWhitespaceUsecase(domain.NewWhitespaceDecoder(), domain.NewWhitespaceEncoder())
+	usecase := NewWhitespaceUsecase()
 
 	_, err := usecase.Execute(context.Background(), WhitespaceCommand{})
 	if err == nil {

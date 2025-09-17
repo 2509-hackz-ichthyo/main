@@ -1,10 +1,13 @@
 package httpserver
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
-	"strconv"
+	"net/url"
 	"strings"
 	"time"
 
@@ -46,9 +49,18 @@ func decodeHandler(uc WhitespaceUsecase) gin.HandlerFunc {
 			return
 		}
 
+		payloadSlice := make([]string, len(req.Payload))
+		copy(payloadSlice, req.Payload)
+
+		payload, err := normalizePayload(req.CommandType, payloadSlice)
+		if err != nil {
+			writeError(c, http.StatusBadRequest, "ペイロードが不正です", err)
+			return
+		}
+
 		command := app.WhitespaceCommand{
 			CommandType: req.CommandType,
-			Payload:     req.Payload,
+			Payload:     payload,
 		}
 
 		result, err := uc.Execute(c.Request.Context(), command)
@@ -87,36 +99,64 @@ func writeError(c *gin.Context, status int, message string, err error) {
 
 // decodeRequest は POST /v1/decode のリクエストボディ。
 type decodeRequest struct {
-	CommandType string `json:"command_type"`
-	Payload     string `json:"payload"`
+	CommandType string     `json:"command_type"`
+	Payload     stringList `json:"payload"`
+}
+
+type stringList []string
+
+func (s *stringList) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		*s = nil
+		return nil
+	}
+
+	if trimmed[0] == '[' {
+		var values []string
+		if err := json.Unmarshal(trimmed, &values); err != nil {
+			return err
+		}
+		*s = values
+		return nil
+	}
+
+	if trimmed[0] == '"' {
+		var value string
+		if err := json.Unmarshal(trimmed, &value); err != nil {
+			return err
+		}
+		*s = []string{value}
+		return nil
+	}
+
+	return fmt.Errorf("payload must be a string or array of strings")
 }
 
 // decodeResponse はデコード結果のレスポンスボディ。
 type decodeResponse struct {
 	CommandType             string   `json:"command_type"`
 	ResultKind              string   `json:"result_kind"`
-	ResultDecimals          []int    `json:"result_decimals,omitempty"`
+	ResultDecimals          []string `json:"result_decimals,omitempty"`
 	ResultBinaries          []string `json:"result_binaries,omitempty"`
 	DecimalString           *string  `json:"decimal_string,omitempty"`
 	BinaryString            *string  `json:"binary_string,omitempty"`
-	ResultWhitespace        *string  `json:"result_whitespace,omitempty"`
-	ResultWhitespaceEncoded *string  `json:"result_whitespace_percent_encoded,omitempty"`
+	ResultWhitespace        []string `json:"result_whitespace,omitempty"`
+	ResultWhitespaceEncoded []string `json:"result_whitespace_percent_encoded,omitempty"`
 }
 
 func newDecodeResponse(result app.WhitespaceResult) decodeResponse {
 	resp := decodeResponse{
-		CommandType:    string(result.CommandType),
-		ResultKind:     string(result.ResultKind),
-		ResultDecimals: result.ResultDecimals,
-		ResultBinaries: result.ResultBinaries,
+		CommandType:             string(result.CommandType),
+		ResultKind:              string(result.ResultKind),
+		ResultDecimals:          result.ResultDecimals,
+		ResultBinaries:          result.ResultBinaries,
+		ResultWhitespace:        result.ResultWhitespace,
+		ResultWhitespaceEncoded: result.ResultWhitespaceEncoded,
 	}
 
 	if len(result.ResultDecimals) > 0 {
-		tokens := make([]string, len(result.ResultDecimals))
-		for i, value := range result.ResultDecimals {
-			tokens[i] = strconv.Itoa(value)
-		}
-		joined := strings.Join(tokens, " ")
+		joined := strings.Join(result.ResultDecimals, " ")
 		resp.DecimalString = &joined
 	}
 
@@ -125,13 +165,34 @@ func newDecodeResponse(result app.WhitespaceResult) decodeResponse {
 		resp.BinaryString = &joined
 	}
 
-	if result.ResultWhitespace != nil {
-		resp.ResultWhitespace = result.ResultWhitespace
-	}
-
-	if result.ResultWhitespaceEncoded != nil {
-		resp.ResultWhitespaceEncoded = result.ResultWhitespaceEncoded
-	}
-
 	return resp
+}
+
+func normalizePayload(commandType string, values []string) ([]string, error) {
+	ct, err := domain.ParseCommandType(commandType)
+	if err != nil {
+		return nil, err
+	}
+
+	normalized := make([]string, len(values))
+	for i, value := range values {
+		switch ct {
+		case domain.CommandTypeWhitespaceToBinary, domain.CommandTypeWhitespaceToDecimal:
+			decoded, err := url.PathUnescape(value)
+			if err != nil {
+				return nil, fmt.Errorf("%w: failed to decode percent-encoded payload", domain.ErrInvalidPayload)
+			}
+			normalized[i] = decoded
+		case domain.CommandTypeDecimalToWhitespace, domain.CommandTypeBinariesToWhitespace:
+			normalized[i] = strings.TrimSpace(value)
+		default:
+			normalized[i] = value
+		}
+	}
+
+	if len(normalized) == 0 {
+		return nil, fmt.Errorf("%w: payload must not be empty", app.ErrValidationFailed)
+	}
+
+	return normalized, nil
 }

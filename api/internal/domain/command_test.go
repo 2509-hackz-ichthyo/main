@@ -13,6 +13,8 @@ func TestParseCommandType(t *testing.T) {
 	}{
 		{name: "WhitespaceToDecimal", input: string(CommandTypeWhitespaceToDecimal), want: CommandTypeWhitespaceToDecimal},
 		{name: "WhitespaceToBinary", input: string(CommandTypeWhitespaceToBinary), want: CommandTypeWhitespaceToBinary},
+		{name: "DecimalToWhitespace", input: string(CommandTypeDecimalToWhitespace), want: CommandTypeDecimalToWhitespace},
+		{name: "BinariesToWhitespace", input: string(CommandTypeBinariesToWhitespace), want: CommandTypeBinariesToWhitespace},
 		{name: "Invalid", input: "Unknown", wantErr: true},
 	}
 
