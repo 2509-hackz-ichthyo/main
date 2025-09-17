@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 )
 
 // NewBoard は初期設定済みの新しいボードを作成する
@@ -119,20 +118,15 @@ func (g *Game) placePiece(x, y int) bool {
 	// 新しいコマを配置
 	g.Board.Squares[x][y].Piece = &Piece{Color: g.NextColor}
 
-	// オンラインモードでは、相手にコマ配置を通知
-	if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
-		err := g.WSConnection.MakeMove(g.PlayerID, g.RoomID, x, y, g.NextColor)
-		if err != nil {
-			log.Printf("Failed to send move to server: %v", err)
-		}
-	}
+	// 注意: WebSocket送信は呼び出し元（game.go）で管理
+	// ここでは盤面処理のみを行う
 
-	// ゲーム終了判定
-	if g.isBoardFull() {
+	// ローカルゲーム終了判定（オンライン時はサーバーが管理）
+	if !g.IsOnline && g.isBoardFull() {
 		g.GameOver = true
 		g.calculateWinner()
-	} else {
-		// ターンを切り替えて次の色を生成
+	} else if !g.IsOnline {
+		// ローカルモードでのみターンを切り替え
 		g.switchTurn()
 	}
 

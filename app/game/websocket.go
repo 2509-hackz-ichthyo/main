@@ -21,19 +21,25 @@ type ServerGameState struct {
 
 // WebSocketメッセージの構造体
 type WSMessage struct {
-	Action    string           `json:"action"`
-	Type      string           `json:"type,omitempty"`
-	Data      interface{}      `json:"data,omitempty"`
-	GameState *ServerGameState `json:"gameState,omitempty"`  // サーバーからのゲーム状態
-	UserID    string           `json:"userId,omitempty"`
-	PlayerID  string           `json:"playerId,omitempty"`
-	RoomID    string           `json:"roomId,omitempty"`
-	Role      string           `json:"role,omitempty"`
-	X         int              `json:"x,omitempty"`
-	Y         int              `json:"y,omitempty"`
-	Row       int              `json:"row,omitempty"`    // game-handler用
-	Col       int              `json:"col,omitempty"`    // game-handler用
-	Color     uint8            `json:"color,omitempty"`
+	Action     string           `json:"action"`
+	Type       string           `json:"type,omitempty"`
+	Data       interface{}      `json:"data,omitempty"`
+	GameState  *ServerGameState `json:"gameState,omitempty"`  // サーバーからのゲーム状態（廃止予定）
+	UserID     string           `json:"userId,omitempty"`
+	PlayerID   string           `json:"playerId,omitempty"`
+	RoomID     string           `json:"roomId,omitempty"`
+	Role       string           `json:"role,omitempty"`
+	X          int              `json:"x,omitempty"`
+	Y          int              `json:"y,omitempty"`
+	Row        int              `json:"row,omitempty"`    // game-handler用
+	Col        int              `json:"col,omitempty"`    // game-handler用
+	Color      uint8            `json:"color,omitempty"`
+	
+	// 新しいpiecePlaced用フィールド
+	NextPlayer string `json:"nextPlayer,omitempty"` // 次のターンのプレイヤー
+	NextColor  int    `json:"nextColor,omitempty"`  // 次に配置する色
+	GamePhase  string `json:"gamePhase,omitempty"`  // "PLAYING" or "FINISHED"
+	Winner     string `json:"winner,omitempty"`     // 勝者
 }
 
 // WebSocket接続状態

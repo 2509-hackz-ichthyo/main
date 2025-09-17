@@ -26,21 +26,33 @@ type MakeMoveRequest struct {
 	Color  int    `json:"color"`
 }
 
-// GameState represents the current game state
+// GameState represents the current game state (simplified - no board state)
 type GameState struct {
-	RoomId        string  `json:"roomId"`
-	TurnNumber    int     `json:"turnNumber"`
-	CurrentPlayer string  `json:"currentPlayer"`
-	NextColor     int     `json:"nextColor"`
-	BoardState    [][]int `json:"boardState"`
-	GamePhase     string  `json:"gamePhase"`
-	Winner        string  `json:"winner,omitempty"`
+	RoomId        string `json:"roomId"`
+	TurnNumber    int    `json:"turnNumber"`
+	CurrentPlayer string `json:"currentPlayer"`
+	NextColor     int    `json:"nextColor"`
+	GamePhase     string `json:"gamePhase"`
+	Winner        string `json:"winner,omitempty"`
 }
 
 // GameUpdateResponse represents the response sent to players
 type GameUpdateResponse struct {
 	Type      string    `json:"type"`
 	GameState GameState `json:"gameState"`
+}
+
+// PiecePlacedResponse represents the response when a piece is placed
+type PiecePlacedResponse struct {
+	Type       string `json:"type"`        // "piecePlaced"
+	UserId     string `json:"userId"`      // 配置したプレイヤー
+	Row        int    `json:"row"`
+	Col        int    `json:"col"`
+	Color      int    `json:"color"`
+	NextPlayer string `json:"nextPlayer"`  // 次のターンのプレイヤー
+	NextColor  int    `json:"nextColor"`   // 次に配置する色
+	GamePhase  string `json:"gamePhase"`   // "PLAYING" or "FINISHED"
+	Winner     string `json:"winner,omitempty"`
 }
 
 // GameRoom represents room metadata
@@ -111,14 +123,11 @@ func handleGameMove(ctx context.Context, request events.APIGatewayWebsocketProxy
 		return events.APIGatewayProxyResponse{StatusCode: 400}, fmt.Errorf("not your turn")
 	}
 
-	// Validate move
-	if !isValidMove(currentGameState.BoardState, moveRequest.Row, moveRequest.Col, moveRequest.Color) {
-		fmt.Printf("Invalid move: row=%d, col=%d, color=%d\n", moveRequest.Row, moveRequest.Col, moveRequest.Color)
-		return events.APIGatewayProxyResponse{StatusCode: 400}, fmt.Errorf("invalid move")
+	// Simple validation: check if position is valid (0-7)
+	if moveRequest.Row < 0 || moveRequest.Row >= 8 || moveRequest.Col < 0 || moveRequest.Col >= 8 {
+		fmt.Printf("Invalid position: row=%d, col=%d\n", moveRequest.Row, moveRequest.Col)
+		return events.APIGatewayProxyResponse{StatusCode: 400}, fmt.Errorf("invalid position")
 	}
-
-	// Apply move and flip pieces
-	newBoard := applyMove(currentGameState.BoardState, moveRequest.Row, moveRequest.Col, moveRequest.Color)
 
 	// Get room info for next player
 	room, err := getRoomInfo(dynamo, tableName, moveRequest.RoomId)
@@ -135,24 +144,23 @@ func handleGameMove(ctx context.Context, request events.APIGatewayWebsocketProxy
 		nextPlayer = room.Player1Id
 	}
 
-	// Check if game is finished
+	// Check if game is finished (simple check - after 60 moves, board is likely full)
 	gamePhase := "PLAYING"
 	winner := ""
-	if isBoardFull(newBoard) {
+	if currentGameState.TurnNumber >= 60 {
 		gamePhase = "FINISHED"
-		winner = determineWinner(newBoard)
+		// Winner will be determined by clients when they report final board states
 	}
 
 	// Generate next color (0-255)
 	nextColor := generateNextColor()
 
-	// Create new game state
+	// Create new simplified game state
 	newGameState := GameState{
 		RoomId:        moveRequest.RoomId,
 		TurnNumber:    currentGameState.TurnNumber + 1,
 		CurrentPlayer: nextPlayer,
 		NextColor:     nextColor,
-		BoardState:    newBoard,
 		GamePhase:     gamePhase,
 		Winner:        winner,
 	}
@@ -171,10 +179,17 @@ func handleGameMove(ctx context.Context, request events.APIGatewayWebsocketProxy
 		return events.APIGatewayProxyResponse{StatusCode: 500}, err
 	}
 
-	// Broadcast to all players
-	response := GameUpdateResponse{
-		Type:      "gameUpdate",
-		GameState: newGameState,
+	// Broadcast piece placed event to all players
+	response := PiecePlacedResponse{
+		Type:       "piecePlaced",
+		UserId:     moveRequest.UserId,
+		Row:        moveRequest.Row,
+		Col:        moveRequest.Col,
+		Color:      moveRequest.Color,
+		NextPlayer: nextPlayer,
+		NextColor:  nextColor,
+		GamePhase:  gamePhase,
+		Winner:     winner,
 	}
 
 	for _, player := range players {
@@ -236,24 +251,7 @@ func getCurrentGameState(dynamo *dynamodb.DynamoDB, tableName, roomId string) (*
 		gameState.Winner = *winnerVal.S
 	}
 
-	// Parse board state
-	if boardVal, ok := item["boardState"]; ok && boardVal.L != nil {
-		board := make([][]int, 8)
-		for i := 0; i < 8; i++ {
-			if i < len(boardVal.L) && boardVal.L[i].L != nil {
-				row := make([]int, 8)
-				for j := 0; j < 8; j++ {
-					if j < len(boardVal.L[i].L) && boardVal.L[i].L[j].N != nil {
-						if val, err := strconv.Atoi(*boardVal.L[i].L[j].N); err == nil {
-							row[j] = val
-						}
-					}
-				}
-				board[i] = row
-			}
-		}
-		gameState.BoardState = board
-	}
+	// Board state is now managed by clients - no longer stored server-side
 
 	return gameState, nil
 }
@@ -265,24 +263,12 @@ func createInitialGameState(dynamo *dynamodb.DynamoDB, tableName, roomId string)
 		return nil, err
 	}
 
-	// Create empty 8x8 board
-	board := make([][]int, 8)
-	for i := 0; i < 8; i++ {
-		board[i] = make([]int, 8)
-	}
-
-	// Set initial four pieces in the center
-	board[3][3] = 0   // (3,3) 黒
-	board[4][4] = 0
-	board[3][4] = 255 // (3,4) 白
-	board[4][3] = 255
-
+	// Initial game state without board (clients handle initial board setup)
 	gameState := &GameState{
 		RoomId:        roomId,
 		TurnNumber:    0,
 		CurrentPlayer: room.Player1Id, // Player1 always goes first
 		NextColor:     64,             // Start with middle gray color
-		BoardState:    board,
 		GamePhase:     "PLAYING",
 	}
 
@@ -368,74 +354,8 @@ func getRoomPlayers(dynamo *dynamodb.DynamoDB, tableName, roomId string) ([]Play
 	return players, nil
 }
 
-func isValidMove(board [][]int, row, col, color int) bool {
-	// Check bounds
-	if row < 0 || row >= 8 || col < 0 || col >= 8 {
-		return false
-	}
-
-	// Check if cell is empty
-	if board[row][col] != 0 {
-		return false
-	}
-
-	// For this implementation, any empty cell is valid
-	// In a full reversi implementation, you'd check for valid flips
-	return true
-}
-
-func applyMove(board [][]int, row, col, color int) [][]int {
-	// Create a copy of the board
-	newBoard := make([][]int, 8)
-	for i := 0; i < 8; i++ {
-		newBoard[i] = make([]int, 8)
-		copy(newBoard[i], board[i])
-	}
-
-	// Place the piece
-	newBoard[row][col] = color
-
-	// For this implementation, we're not implementing full reversi flipping rules
-	// In a full implementation, you'd flip adjacent pieces based on reversi rules
-
-	return newBoard
-}
-
-func isBoardFull(board [][]int) bool {
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 8; j++ {
-			if board[i][j] == 0 {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func determineWinner(board [][]int) string {
-	var totalSum int
-	var pieceCount int
-
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 8; j++ {
-			if board[i][j] != 0 {
-				totalSum += board[i][j]
-				pieceCount++
-			}
-		}
-	}
-
-	if pieceCount == 0 {
-		return "DRAW"
-	}
-
-	avgColor := totalSum / pieceCount
-	if avgColor < 128 {
-		return "PLAYER1" // Black side (0-127)
-	} else {
-		return "PLAYER2" // White side (128-255)
-	}
-}
+// Board validation and game logic moved to client-side
+// Server now only handles turn management and basic position validation
 
 func generateNextColor() int {
 	// Generate a random color between 0-255
@@ -446,16 +366,7 @@ func generateNextColor() int {
 func saveGameState(dynamo *dynamodb.DynamoDB, tableName string, gameState GameState) error {
 	now := time.Now().Format(time.RFC3339)
 
-	// Convert board to DynamoDB format
-	boardList := make([]*dynamodb.AttributeValue, 8)
-	for i := 0; i < 8; i++ {
-		rowList := make([]*dynamodb.AttributeValue, 8)
-		for j := 0; j < 8; j++ {
-			rowList[j] = &dynamodb.AttributeValue{N: aws.String(strconv.Itoa(gameState.BoardState[i][j]))}
-		}
-		boardList[i] = &dynamodb.AttributeValue{L: rowList}
-	}
-
+	// Simplified game state without board data
 	item := map[string]*dynamodb.AttributeValue{
 		"PK":            {S: aws.String(fmt.Sprintf("ROOM#%s", gameState.RoomId))},
 		"SK":            {S: aws.String(fmt.Sprintf("TURN#%06d", gameState.TurnNumber))},
@@ -463,7 +374,6 @@ func saveGameState(dynamo *dynamodb.DynamoDB, tableName string, gameState GameSt
 		"turnNumber":    {N: aws.String(strconv.Itoa(gameState.TurnNumber))},
 		"currentPlayer": {S: aws.String(gameState.CurrentPlayer)},
 		"nextColor":     {N: aws.String(strconv.Itoa(gameState.NextColor))},
-		"boardState":    {L: boardList},
 		"gamePhase":     {S: aws.String(gameState.GamePhase)},
 		"createdAt":     {S: aws.String(now)},
 	}

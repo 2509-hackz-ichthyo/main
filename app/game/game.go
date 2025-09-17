@@ -137,6 +137,10 @@ func (g *Game) handleWebSocketMessage(message WSMessage) {
 		log.Printf("Game update received: %+v", message.Data)
 		g.handleGameUpdate(message)
 
+	case "piecePlaced":
+		log.Printf("Piece placed: user=%s, row=%d, col=%d, color=%d", message.UserID, message.Row, message.Col, message.Color)
+		g.handlePiecePlaced(message)
+
 	case "opponentMove":
 		log.Printf("Opponent move: x=%d, y=%d, color=%d", message.X, message.Y, message.Color)
 		g.handleOpponentMove(message.X, message.Y, message.Color)
@@ -153,7 +157,55 @@ func (g *Game) handleWebSocketMessage(message WSMessage) {
 	}
 }
 
-// 相手プレイヤーのコマ配置を処理
+// piecePlacedメッセージを処理（新しい統一方式）
+func (g *Game) handlePiecePlaced(message WSMessage) {
+	// 座標変換（サーバーはrow/col、クライアントはx/y）
+	x := message.Row
+	y := message.Col
+	color := uint8(message.Color)
+
+	if x < 0 || x >= BoardSize || y < 0 || y >= BoardSize {
+		log.Printf("Invalid piece placement coordinates: x=%d, y=%d", x, y)
+		return
+	}
+
+	// 自分の手か相手の手かをチェック
+	isMyMove := (message.UserID == g.PlayerID)
+	
+	if isMyMove {
+		log.Printf("Confirmed my piece placement at (%d, %d) with color %d", x, y, color)
+	} else {
+		log.Printf("Processing opponent's piece placement at (%d, %d) with color %d", x, y, color)
+		// 相手の手の場合、同じplacePieceロジックを適用
+		g.NextColor = color
+		success := g.placePiece(x, y)
+		if !success {
+			log.Printf("Failed to apply opponent's move - board state may be inconsistent")
+		}
+	}
+
+	// ターン情報を更新
+	if message.NextPlayer != "" {
+		g.CurrentTurn = (message.NextPlayer == g.PlayerID)
+		g.NextColor = uint8(message.NextColor)
+		log.Printf("Next turn: %s (my turn: %v), next color: %d", message.NextPlayer, g.CurrentTurn, message.NextColor)
+	}
+
+	// ゲーム終了判定
+	if message.GamePhase == "FINISHED" {
+		g.GameOver = true
+		if message.Winner != "" {
+			g.Winner = message.Winner
+			if message.Winner == g.PlayerID {
+				log.Printf("You won!")
+			} else {
+				log.Printf("Opponent won!")
+			}
+		}
+	}
+}
+
+// 相手プレイヤーのコマ配置を処理（旧方式 - 互換性のため残す）
 func (g *Game) handleOpponentMove(x, y int, color uint8) {
 	if x < 0 || x >= BoardSize || y < 0 || y >= BoardSize {
 		log.Printf("Invalid opponent move coordinates: x=%d, y=%d", x, y)
@@ -245,7 +297,22 @@ func (g *Game) Update() error {
 
 		// クリックがボード範囲内かチェックしてコマを配置
 		if boardX >= 0 && boardX < BoardSize && boardY >= 0 && boardY < BoardSize {
-			g.placePiece(boardX, boardY)
+			// オンラインモードでは自分のターンか確認
+			if g.IsOnline && !g.CurrentTurn {
+				log.Printf("Not your turn!")
+				return nil
+			}
+			
+			success := g.placePiece(boardX, boardY)
+			if success {
+				// オンラインモードでは、サーバーにコマ配置を通知
+				if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
+					err := g.WSConnection.MakeMove(g.PlayerID, g.RoomID, boardX, boardY, g.NextColor)
+					if err != nil {
+						log.Printf("Failed to send move to server: %v", err)
+					}
+				}
+			}
 		}
 	}
 
