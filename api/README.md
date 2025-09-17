@@ -106,7 +106,7 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 
 - レスポンス例: 成功
   ```
-  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":["46802", "0"],"decimal_string":"46802 0"}
+  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":["11 6 210", "0 0 0"],"decimal_string":"11 6 210 0 0 0"}
   ```
 
 ## Whitespace（パーセントエンコード） → 2 進数
@@ -120,24 +120,24 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 
 - レスポンス例: 成功
   ```
-  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["1011011011010010","0000000000000000"],"binary_string":"1011011011010010 0000000000000000"}
+  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["1011 0110 11010010","0000 0000 00000000"],"binary_string":"1011 0110 11010010 0000 0000 00000000"}
   ```
 
 ## 10 進数 → Whitespace
 
 ```
-curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"DecimalToWhitespace","payload":["325","0", "428"]}'
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"DecimalToWhitespace","payload":["11 3 125","2 0 0", "8 15 228"]}'
 ```
 
 - レスポンス例: 成功
   ```
-  {"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_whitespace":["       \n      \t\n    \t   \t \t\n","       \n       \n           \n","       \n      \t\n   \t \t \t\t  \n"],"result_whitespace_percent_encoded":["%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%09%0A%20%20%20%20%09%20%20%20%09%20%09%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%09%0A%20%20%20%09%20%09%20%09%09%20%20%0A"]}
+  {"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_binaries":["1011 0011 01111101","0010 0000 00000000","1000 1111 11100100"],"binary_string":"1011 0011 01111101 0010 0000 00000000 1000 1111 11100100","result_whitespace":["   \t \t\t\n     \t\t\n    \t\t\t\t\t \t\n","     \t \n       \n           \n","   \t   \n   \t\t\t\t\n   \t\t\t  \t  \n"],"result_whitespace_percent_encoded":["%20%20%20%09%20%09%09%0A%20%20%20%20%20%09%09%0A%20%20%20%20%09%09%09%09%09%20%09%0A","%20%20%20%20%20%09%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A","%20%20%20%09%20%20%20%0A%20%20%20%09%09%09%09%0A%20%20%20%09%09%09%20%20%09%20%20%0A"]}
   ```
 
 ## 2 進数 → Whitespace
 
 ```
-curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"BinariesToWhitespace","payload":["1011011011010010","0000000000000000"]}'
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"BinariesToWhitespace","payload":["1011 0110 11010010","0000 0000 00000000"]}'
 ```
 
 - レスポンス例: 成功

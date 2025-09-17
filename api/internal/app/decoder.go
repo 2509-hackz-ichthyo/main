@@ -3,8 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/2509-hackz-ichthyo/main/api/internal/domain"
@@ -66,11 +66,11 @@ func (u *WhitespaceUsecase) Execute(_ context.Context, command WhitespaceCommand
 func (WhitespaceUsecase) whitespaceToBinary(payload []string) (WhitespaceResult, error) {
 	binaries := make([]string, len(payload))
 	for i, sentence := range payload {
-		binary, err := parseWhitespaceSentence(sentence)
+		parsed, err := parseWhitespaceSentence(sentence)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
-		binaries[i] = binary
+		binaries[i] = parsed.formatted
 	}
 
 	return WhitespaceResult{
@@ -83,16 +83,11 @@ func (WhitespaceUsecase) whitespaceToBinary(payload []string) (WhitespaceResult,
 func (WhitespaceUsecase) whitespaceToDecimal(payload []string) (WhitespaceResult, error) {
 	decimals := make([]string, len(payload))
 	for i, sentence := range payload {
-		binary, err := parseWhitespaceSentence(sentence)
+		parsed, err := parseWhitespaceSentence(sentence)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
-
-		value, ok := new(big.Int).SetString(binary, 2)
-		if !ok {
-			return WhitespaceResult{}, fmt.Errorf("%w: invalid binary sequence", domain.ErrInvalidPayload)
-		}
-		decimals[i] = value.String()
+		decimals[i] = strings.Join(parsed.decimals, " ")
 	}
 
 	return WhitespaceResult{
@@ -105,24 +100,27 @@ func (WhitespaceUsecase) whitespaceToDecimal(payload []string) (WhitespaceResult
 func (WhitespaceUsecase) decimalToWhitespace(payload []string) (WhitespaceResult, error) {
 	whitespaces := make([]string, len(payload))
 	encoded := make([]string, len(payload))
+	binaries := make([]string, len(payload))
 	for i, decimal := range payload {
 		binary, err := decimalStringToBinary(decimal)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
 
-		whitespace, err := binaryToWhitespace(binary)
+		whitespace, err := bitsToWhitespace(binary)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
 
 		whitespaces[i] = whitespace
 		encoded[i] = url.PathEscape(whitespace)
+		binaries[i] = formatBinarySegments(binary)
 	}
 
 	return WhitespaceResult{
 		CommandType:             domain.CommandTypeDecimalToWhitespace,
 		ResultKind:              domain.ResultKindWhitespace,
+		ResultBinaries:          binaries,
 		ResultWhitespace:        whitespaces,
 		ResultWhitespaceEncoded: encoded,
 	}, nil
@@ -131,90 +129,141 @@ func (WhitespaceUsecase) decimalToWhitespace(payload []string) (WhitespaceResult
 func (WhitespaceUsecase) binaryToWhitespace(payload []string) (WhitespaceResult, error) {
 	whitespaces := make([]string, len(payload))
 	encoded := make([]string, len(payload))
+	binaries := make([]string, len(payload))
 	for i, binary := range payload {
-		whitespace, err := binaryToWhitespace(binary)
+		clean, formatted, err := normalizeBinaryString(binary)
+		if err != nil {
+			return WhitespaceResult{}, err
+		}
+
+		whitespace, err := bitsToWhitespace(clean)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
 		whitespaces[i] = whitespace
 		encoded[i] = url.PathEscape(whitespace)
+		binaries[i] = formatted
 	}
 
 	return WhitespaceResult{
 		CommandType:             domain.CommandTypeBinariesToWhitespace,
 		ResultKind:              domain.ResultKindWhitespace,
+		ResultBinaries:          binaries,
 		ResultWhitespace:        whitespaces,
 		ResultWhitespaceEncoded: encoded,
 	}, nil
 }
 
-func parseWhitespaceSentence(sentence string) (string, error) {
+type binarySentence struct {
+	formatted string
+	decimals  []string
+}
+
+func parseWhitespaceSentence(sentence string) (binarySentence, error) {
 	segments, err := extractSegments(sentence)
 	if err != nil {
-		return "", err
+		return binarySentence{}, err
 	}
 
-	var builder strings.Builder
-	for _, segment := range segments {
+	formattedSegments := make([]string, len(segments))
+	decimals := make([]string, len(segments))
+	for i, segment := range segments {
+		var segmentBuilder strings.Builder
 		for _, r := range segment {
 			switch r {
 			case ' ':
-				builder.WriteByte('0')
+				segmentBuilder.WriteByte('0')
 			case '\t':
-				builder.WriteByte('1')
+				segmentBuilder.WriteByte('1')
 			default:
-				return "", fmt.Errorf("%w: unsupported rune %#U", domain.ErrInvalidPayload, r)
+				return binarySentence{}, fmt.Errorf("%w: unsupported rune %#U", domain.ErrInvalidPayload, r)
 			}
 		}
+		bits := segmentBuilder.String()
+		formattedSegments[i] = bits
+
+		value, err := strconv.ParseUint(bits, 2, 8)
+		if err != nil {
+			return binarySentence{}, fmt.Errorf("%w: invalid binary segment", domain.ErrInvalidPayload)
+		}
+		decimals[i] = strconv.FormatUint(value, 10)
+	}
+
+	return binarySentence{
+		formatted: strings.Join(formattedSegments, " "),
+		decimals:  decimals,
+	}, nil
+}
+
+func decimalStringToBinary(decimal string) (string, error) {
+	tokens := strings.Fields(decimal)
+	if len(tokens) != 3 {
+		return "", fmt.Errorf("%w: decimal must contain three numbers", domain.ErrInvalidPayload)
+	}
+
+	segmentLengths := []int{4, 4, 8}
+	var builder strings.Builder
+	for i, token := range tokens {
+		value, err := strconv.Atoi(token)
+		if err != nil {
+			return "", fmt.Errorf("%w: token %q is not an integer", domain.ErrInvalidPayload, token)
+		}
+		if value < 0 || value >= 1<<segmentLengths[i] {
+			return "", fmt.Errorf("%w: decimal %q out of range", domain.ErrInvalidPayload, token)
+		}
+		builder.WriteString(fmt.Sprintf("%0*b", segmentLengths[i], value))
 	}
 
 	return builder.String(), nil
 }
 
-func decimalStringToBinary(decimal string) (string, error) {
-	value, ok := new(big.Int).SetString(strings.TrimSpace(decimal), 10)
-	if !ok {
-		return "", fmt.Errorf("%w: decimal value %q is not a number", domain.ErrInvalidPayload, decimal)
-	}
-	if value.Sign() < 0 {
-		return "", fmt.Errorf("%w: negative decimal %q", domain.ErrInvalidPayload, decimal)
-	}
-	if value.BitLen() > 16 {
-		return "", fmt.Errorf("%w: decimal %q exceeds 16 bit", domain.ErrInvalidPayload, decimal)
-	}
-
-	return fmt.Sprintf("%016b", value.Uint64()), nil
-}
-
-func binaryToWhitespace(binary string) (string, error) {
-	trimmed := strings.TrimSpace(binary)
+func normalizeBinaryString(input string) (string, string, error) {
+	trimmed := strings.TrimSpace(input)
 	if trimmed == "" {
-		return "", fmt.Errorf("%w: binary must not be blank", domain.ErrInvalidPayload)
+		return "", "", fmt.Errorf("%w: binary must not be blank", domain.ErrInvalidPayload)
 	}
-	if len(trimmed) != 16 {
-		return "", fmt.Errorf("%w: binary must be 16 bits", domain.ErrInvalidPayload)
+
+	clean := strings.ReplaceAll(trimmed, " ", "")
+	if len(clean) != 16 {
+		return "", "", fmt.Errorf("%w: binary must be 16 bits", domain.ErrInvalidPayload)
 	}
-	for _, r := range trimmed {
+
+	for _, r := range clean {
 		if r != '0' && r != '1' {
-			return "", fmt.Errorf("%w: binary contains invalid rune %#U", domain.ErrInvalidPayload, r)
+			return "", "", fmt.Errorf("%w: binary contains invalid rune %#U", domain.ErrInvalidPayload, r)
 		}
 	}
 
-	segments := []string{trimmed[:4], trimmed[4:8], trimmed[8:]}
+	return clean, formatBinarySegments(clean), nil
+}
+
+func bitsToWhitespace(bits string) (string, error) {
+	if len(bits) != 16 {
+		return "", fmt.Errorf("%w: binary must be 16 bits", domain.ErrInvalidPayload)
+	}
+
+	segments := []string{bits[:4], bits[4:8], bits[8:]}
 	var builder strings.Builder
 	for _, segment := range segments {
 		builder.WriteString("   ")
 		for _, bit := range segment {
-			if bit == '0' {
+			switch bit {
+			case '0':
 				builder.WriteByte(' ')
-			} else {
+			case '1':
 				builder.WriteByte('\t')
+			default:
+				return "", fmt.Errorf("%w: binary contains invalid rune %#U", domain.ErrInvalidPayload, bit)
 			}
 		}
 		builder.WriteByte('\n')
 	}
 
 	return builder.String(), nil
+}
+
+func formatBinarySegments(bits string) string {
+	return strings.Join([]string{bits[:4], bits[4:8], bits[8:]}, " ")
 }
 
 func extractSegments(sentence string) ([]string, error) {
