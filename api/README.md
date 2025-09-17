@@ -106,7 +106,7 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 
 - レスポンス例: 成功
   ```
-  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":["46802", "0"],"decimal_string":"46802 0"}
+  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":["11 6 210", "0 0 0"],"decimal_string":"11 6 210 0 0 0"}
   ```
 
 ## Whitespace（パーセントエンコード） → 2 進数
