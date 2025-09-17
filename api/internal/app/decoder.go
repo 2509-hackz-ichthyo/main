@@ -66,11 +66,11 @@ func (u *WhitespaceUsecase) Execute(_ context.Context, command WhitespaceCommand
 func (WhitespaceUsecase) whitespaceToBinary(payload []string) (WhitespaceResult, error) {
 	binaries := make([]string, len(payload))
 	for i, sentence := range payload {
-		binary, err := parseWhitespaceSentence(sentence)
+		parsed, err := parseWhitespaceSentence(sentence)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
-		binaries[i] = binary
+		binaries[i] = parsed.formatted
 	}
 
 	return WhitespaceResult{
@@ -83,12 +83,12 @@ func (WhitespaceUsecase) whitespaceToBinary(payload []string) (WhitespaceResult,
 func (WhitespaceUsecase) whitespaceToDecimal(payload []string) (WhitespaceResult, error) {
 	decimals := make([]string, len(payload))
 	for i, sentence := range payload {
-		binary, err := parseWhitespaceSentence(sentence)
+		parsed, err := parseWhitespaceSentence(sentence)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
 
-		value, ok := new(big.Int).SetString(binary, 2)
+		value, ok := new(big.Int).SetString(parsed.raw, 2)
 		if !ok {
 			return WhitespaceResult{}, fmt.Errorf("%w: invalid binary sequence", domain.ErrInvalidPayload)
 		}
@@ -148,27 +148,40 @@ func (WhitespaceUsecase) binaryToWhitespace(payload []string) (WhitespaceResult,
 	}, nil
 }
 
-func parseWhitespaceSentence(sentence string) (string, error) {
+type binarySentence struct {
+	raw       string
+	formatted string
+}
+
+func parseWhitespaceSentence(sentence string) (binarySentence, error) {
 	segments, err := extractSegments(sentence)
 	if err != nil {
-		return "", err
+		return binarySentence{}, err
 	}
 
-	var builder strings.Builder
-	for _, segment := range segments {
+	var raw strings.Builder
+	formattedSegments := make([]string, len(segments))
+	for i, segment := range segments {
+		var segmentBuilder strings.Builder
 		for _, r := range segment {
 			switch r {
 			case ' ':
-				builder.WriteByte('0')
+				raw.WriteByte('0')
+				segmentBuilder.WriteByte('0')
 			case '\t':
-				builder.WriteByte('1')
+				raw.WriteByte('1')
+				segmentBuilder.WriteByte('1')
 			default:
-				return "", fmt.Errorf("%w: unsupported rune %#U", domain.ErrInvalidPayload, r)
+				return binarySentence{}, fmt.Errorf("%w: unsupported rune %#U", domain.ErrInvalidPayload, r)
 			}
 		}
+		formattedSegments[i] = segmentBuilder.String()
 	}
 
-	return builder.String(), nil
+	return binarySentence{
+		raw:       raw.String(),
+		formatted: strings.Join(formattedSegments, " "),
+	}, nil
 }
 
 func decimalStringToBinary(decimal string) (string, error) {
@@ -191,16 +204,17 @@ func binaryToWhitespace(binary string) (string, error) {
 	if trimmed == "" {
 		return "", fmt.Errorf("%w: binary must not be blank", domain.ErrInvalidPayload)
 	}
-	if len(trimmed) != 16 {
+	clean := strings.ReplaceAll(trimmed, " ", "")
+	if len(clean) != 16 {
 		return "", fmt.Errorf("%w: binary must be 16 bits", domain.ErrInvalidPayload)
 	}
-	for _, r := range trimmed {
+	for _, r := range clean {
 		if r != '0' && r != '1' {
 			return "", fmt.Errorf("%w: binary contains invalid rune %#U", domain.ErrInvalidPayload, r)
 		}
 	}
 
-	segments := []string{trimmed[:4], trimmed[4:8], trimmed[8:]}
+	segments := []string{clean[:4], clean[4:8], clean[8:]}
 	var builder strings.Builder
 	for _, segment := range segments {
 		builder.WriteString("   ")
