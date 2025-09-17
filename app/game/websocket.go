@@ -163,7 +163,7 @@ func (ws *WSConnection) JoinGame(playerID string) error {
 // ゲーム内でのコマ移動を送信
 func (ws *WSConnection) MakeMove(roomID string, x, y int, color uint8) error {
 	message := WSMessage{
-		Action: "move",
+		Action: "makeMove",  // Terraformのroute_keyと一致させる
 		RoomID: roomID,
 		X:      x,
 		Y:      y,
