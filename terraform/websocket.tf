@@ -17,6 +17,46 @@ resource "aws_dynamodb_table" "websocket_connections" {
   }
 }
 
+# DynamoDB table for Game Service (Single Table Design)
+resource "aws_dynamodb_table" "game_service" {
+  name           = "game-service"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "PK"
+  range_key      = "SK"
+
+  attribute {
+    name = "PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "SK"
+    type = "S"
+  }
+
+  attribute {
+    name = "GSI1PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "GSI1SK"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "GSI1"
+    hash_key        = "GSI1PK"
+    range_key       = "GSI1SK"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
 # api gateway
 resource "aws_apigatewayv2_api" "hackz_ichthyo_websocket" {
   name                       = "hackz_ichthyo-websocket"
@@ -75,6 +115,21 @@ resource "aws_iam_role_policy" "lambda_websocket_policy" {
       {
         Effect = "Allow"
         Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = [
+          aws_dynamodb_table.game_service.arn,
+          "${aws_dynamodb_table.game_service.arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "execute-api:ManageConnections"
         ]
         Resource = "${aws_apigatewayv2_api.hackz_ichthyo_websocket.execution_arn}/*/*"
@@ -97,6 +152,13 @@ data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.module}/lambda/connect_handler"
   output_path = "${path.module}/lambda/connect_handler.zip"
+}
+
+# Data source to create ZIP file for matchmaking Lambda
+data "archive_file" "lambda_matchmaking_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/matchmaking_handler"
+  output_path = "${path.module}/lambda/matchmaking_handler.zip"
 }
 
 # Lambda function for WebSocket $connect route
@@ -122,12 +184,43 @@ resource "aws_lambda_function" "hackz_ichthyo_connect_handler" {
   }
 }
 
+# Lambda function for WebSocket matchmaking route
+resource "aws_lambda_function" "hackz_ichthyo_matchmaking_handler" {
+  filename         = data.archive_file.lambda_matchmaking_zip.output_path
+  function_name    = "hackz-ichthyo-websocket-matchmaking"
+  role            = aws_iam_role.lambda_websocket_role.arn
+  handler         = "bootstrap"
+  runtime         = "provided.al2"
+  timeout         = 30
+
+  source_code_hash = data.archive_file.lambda_matchmaking_zip.output_base64sha256
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.game_service.name
+    }
+  }
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
 # lambda integration
 resource "aws_apigatewayv2_integration" "hackz_ichthyo_integration" {
   api_id             = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
   integration_type   = "AWS_PROXY"
   integration_method = "POST"
   integration_uri    = aws_lambda_function.hackz_ichthyo_connect_handler.invoke_arn
+}
+
+# matchmaking lambda integration
+resource "aws_apigatewayv2_integration" "hackz_ichthyo_matchmaking_integration" {
+  api_id             = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+  integration_uri    = aws_lambda_function.hackz_ichthyo_matchmaking_handler.invoke_arn
 }
 
 # deployment stage
@@ -206,6 +299,13 @@ resource "aws_apigatewayv2_route" "hackz_ichthyo_disconnect" {
   target    = "integrations/${aws_apigatewayv2_integration.hackz_ichthyo_disconnect_integration.id}"
 }
 
+# joinGame route
+resource "aws_apigatewayv2_route" "hackz_ichthyo_joingame" {
+  api_id    = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
+  route_key = "joinGame"
+  target    = "integrations/${aws_apigatewayv2_integration.hackz_ichthyo_matchmaking_integration.id}"
+}
+
 # permission for exec lambda (connect)
 resource "aws_lambda_permission" "connect_handler" {
   statement_id  = "AllowExecutionFromAPIGateway"
@@ -222,6 +322,15 @@ resource "aws_lambda_permission" "disconnect_handler" {
   function_name = aws_lambda_function.hackz_ichthyo_disconnect_handler.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/$disconnect"
+}
+
+# permission for exec lambda (matchmaking)
+resource "aws_lambda_permission" "matchmaking_handler" {
+  statement_id  = "AllowMatchmakingExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.hackz_ichthyo_matchmaking_handler.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/joinGame"
 }
 
 # custom domain
