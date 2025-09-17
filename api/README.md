@@ -106,7 +106,7 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 
 - レスポンス例: 成功
   ```
-  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":["8346", "0"],"decimal_string":"8346 0"}
+  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":["46802", "0"],"decimal_string":"46802 0"}
   ```
 
 ## Whitespace（パーセントエンコード） → 2 進数
@@ -126,12 +126,12 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 ## 10 進数 → Whitespace
 
 ```
-curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"DecimalToWhitespace","payload":["8346","0"]}'
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"DecimalToWhitespace","payload":["325","0", "428"]}'
 ```
 
 - レスポンス例: 成功
   ```
-  {"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_whitespace":["   \t \t\t\n    \t\t \n   \t\t \t  \t \n","       \n       \n           \n"],"result_whitespace_percent_encoded":["%20%20%20%09%20%09%09%0A%20%20%20%20%09%09%20%0A%20%20%20%09%09%20%09%20%20%09%20%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A"]}
+  {"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_whitespace":["       \n      \t\n    \t   \t \t\n","       \n       \n           \n","       \n      \t\n   \t \t \t\t  \n"],"result_whitespace_percent_encoded":["%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%09%0A%20%20%20%20%09%20%20%20%09%20%09%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%09%0A%20%20%20%09%20%09%20%09%09%20%20%0A"]}
   ```
 
 ## 2 進数 → Whitespace

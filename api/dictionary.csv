@@ -29,11 +29,17 @@
 253,11111101,SSSSSSSLSSSSSSSLSSSTTTTTTSTL,       \n       \n   \t\t\t\t\t\t \t\n
 254,11111110,SSSSSSSLSSSSSSSLSSSTTTTTTTSL,       \n       \n   \t\t\t\t\t\t\t \n
 255,11111111,SSSSSSSLSSSSSSSLSSSTTTTTTTTL,       \n       \n   \t\t\t\t\t\t\t\t\n
+//
+325,0000000101000101,SSSSSSSLSSSSSSTLSSSSTSSSTSTL,       \n      \t\n    \t   \t \t\n
+//
+428,0000000110101100,SSSSSSSLSSSSSSTLSSSTSTSTTSSL,       \n      \t\n   \t \t \t\t  \n
+//
+8346,0010000010011010,SSSSSTSLSSSSSSSLSSSTSSTTSTSL,     \t \n       \n   \t  \t\t \t \n
 // 
 13107,0011001100110011,SSSSSTTLSSSSSTTLSSSSSTTSSTTL,     \t\t\n     \t\t\n     \t\t  \t\t\n
 // 
 46802,1011011011010010,SSSTSTTLSSSSTTSLSSSTTSTSSTSL,   \t \t\t\n    \t\t \n   \t\t \t  \t \n,
-// 
+//
 65533,1111111111111101,SSSTTTTLSSSTTTTLSSSTTTTTTSTL,   \t\t\t\t\n   \t\t\t\t\n   \t\t\t\t\t\t \t\n,
 65534,1111111111111110,SSSTTTTLSSSTTTTLSSSTTTTTTTSL,   \t\t\t\t\n   \t\t\t\t\n   \t\t\t\t\t\t\t \n,
 65535,1111111111111111,SSSTTTTLSSSTTTTLSSSTTTTTTTL,   \t\t\t\t\n   \t\t\t\t\n   \t\t\t\t\t\t\t\t\n,
