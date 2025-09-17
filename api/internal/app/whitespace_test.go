@@ -90,9 +90,6 @@ func TestWhitespaceUsecaseDecimalToWhitespace(t *testing.T) {
 	if result.ResultWhitespaceEncoded[0] != "%20%20%20%09%20%09%09%0A%20%20%20%20%09%09%20%0A%20%20%20%09%09%20%09%20%20%09%20%0A" {
 		t.Fatalf("unexpected encoded whitespace: %s", result.ResultWhitespaceEncoded[0])
 	}
-	if len(result.ResultBinaries) != 1 || result.ResultBinaries[0] != "1011 0110 11010010" {
-		t.Fatalf("unexpected binary echo: %v", result.ResultBinaries)
-	}
 }
 
 func TestWhitespaceUsecaseBinaryToWhitespace(t *testing.T) {
@@ -116,9 +113,6 @@ func TestWhitespaceUsecaseBinaryToWhitespace(t *testing.T) {
 	}
 	if result.ResultWhitespace[0] != expected {
 		t.Fatalf("unexpected whitespace output: %q", result.ResultWhitespace[0])
-	}
-	if len(result.ResultBinaries) != 1 || result.ResultBinaries[0] != "1011 0110 11010010" {
-		t.Fatalf("unexpected binary echo: %v", result.ResultBinaries)
 	}
 }
 
