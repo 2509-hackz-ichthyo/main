@@ -30,8 +30,8 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
       "payload": "SSS..." // 実際には空白・タブ・改行からなる文字列
     }
     ```
-    - `command_type`: `WhitespaceToDecimal` または `WhitespaceToBinary`
-    - `payload`: 対象となる Whitespace コマンド文字列（URL エンコードされた文字列も利用可）
+    - `command_type`: `WhitespaceToDecimal` / `WhitespaceToBinary` / `DecimalToWhitespace`
+    - `payload`: 対象となる Whitespace 文字列（URL エンコード可）または 10 進数列
   - Response
     ```json
     {
@@ -42,6 +42,7 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
     }
     ```
     - 10 進数への変換時は `result_decimals` / `decimal_string` がセットされます
+    - Whitespace への変換時は生の文字列を `result_whitespace` に、パーセントエンコードされた文字列を `result_whitespace_percent_encoded` に格納します
 
 ## 仕様
 
@@ -60,6 +61,7 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
 - `{TまたはSが4つ}` や `{TまたはSが8つ}` の部分を変換対象とし、`S` を `0`、`T` を `1` に写像する。
 - 各文を順に変換して結合する。`result_binaries` は 1 文ごとの 2 進数列、`binary_string` は空白区切りで連結したもの。
 - `WhitespaceToDecimal` の場合は各文字を ASCII コードに変換して 10 進数列として返す。
+- `DecimalToWhitespace` の場合は `32` / `9` / `10` のみを受け付け、対応する Whitespace 文字（スペース / タブ / 改行）を復元する。
 
 ## 開発
 
@@ -107,3 +109,16 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
   ```
   {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["0101"],"binary_string":"0101"}
   ```
+
+## 10 進数 → Whitespace
+
+```
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
+-d '{"command_type":"DecimalToWhitespace","payload":"32 9 10"}'
+```
+
+- レスポンス例: 成功
+
+```
+{"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_whitespace":" \t\n","result_whitespace_percent_encoded":"%20%09%0A"}
+```

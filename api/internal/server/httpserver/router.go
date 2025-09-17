@@ -13,15 +13,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DecoderUsecase はハンドラが依存する最小限のインタフェースを表す。
+// WhitespaceUsecase はハンドラが依存する最小限のインタフェースを表す。
 // ユースケース層の実装は Execute メソッドのみを公開すれば良い。
-type DecoderUsecase interface {
-	Execute(ctx context.Context, command app.DecodeCommand) (app.DecodingResult, error)
+type WhitespaceUsecase interface {
+	Execute(ctx context.Context, command app.WhitespaceCommand) (app.WhitespaceResult, error)
 }
 
 // NewRouter は Gin の Engine を生成し、エンドポイントを束ねる。
 // ここでミドルウェアやルーティングを一元的に設定する。
-func NewRouter(decoderUC DecoderUsecase) *gin.Engine {
+func NewRouter(uc WhitespaceUsecase) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
@@ -31,13 +31,13 @@ func NewRouter(decoderUC DecoderUsecase) *gin.Engine {
 
 	v1 := r.Group("/v1")
 	{
-		v1.POST("/decode", decodeHandler(decoderUC))
+		v1.POST("/decode", decodeHandler(uc))
 	}
 
 	return r
 }
 
-func decodeHandler(decoderUC DecoderUsecase) gin.HandlerFunc {
+func decodeHandler(uc WhitespaceUsecase) gin.HandlerFunc {
 	// decodeHandler は POST /v1/decode に届いたリクエストをユースケースへ委譲する。
 	return func(c *gin.Context) {
 		var req decodeRequest
@@ -46,12 +46,12 @@ func decodeHandler(decoderUC DecoderUsecase) gin.HandlerFunc {
 			return
 		}
 
-		command := app.DecodeCommand{
+		command := app.WhitespaceCommand{
 			CommandType: req.CommandType,
 			Payload:     req.Payload,
 		}
 
-		result, err := decoderUC.Execute(c.Request.Context(), command)
+		result, err := uc.Execute(c.Request.Context(), command)
 		if err != nil {
 			handleUsecaseError(c, err)
 			return
@@ -93,15 +93,17 @@ type decodeRequest struct {
 
 // decodeResponse はデコード結果のレスポンスボディ。
 type decodeResponse struct {
-	CommandType    string   `json:"command_type"`
-	ResultKind     string   `json:"result_kind"`
-	ResultDecimals []int    `json:"result_decimals,omitempty"`
-	ResultBinaries []string `json:"result_binaries,omitempty"`
-	DecimalString  *string  `json:"decimal_string,omitempty"`
-	BinaryString   *string  `json:"binary_string,omitempty"`
+	CommandType             string   `json:"command_type"`
+	ResultKind              string   `json:"result_kind"`
+	ResultDecimals          []int    `json:"result_decimals,omitempty"`
+	ResultBinaries          []string `json:"result_binaries,omitempty"`
+	DecimalString           *string  `json:"decimal_string,omitempty"`
+	BinaryString            *string  `json:"binary_string,omitempty"`
+	ResultWhitespace        *string  `json:"result_whitespace,omitempty"`
+	ResultWhitespaceEncoded *string  `json:"result_whitespace_percent_encoded,omitempty"`
 }
 
-func newDecodeResponse(result app.DecodingResult) decodeResponse {
+func newDecodeResponse(result app.WhitespaceResult) decodeResponse {
 	resp := decodeResponse{
 		CommandType:    string(result.CommandType),
 		ResultKind:     string(result.ResultKind),
@@ -121,6 +123,14 @@ func newDecodeResponse(result app.DecodingResult) decodeResponse {
 	if len(result.ResultBinaries) > 0 {
 		joined := strings.Join(result.ResultBinaries, " ")
 		resp.BinaryString = &joined
+	}
+
+	if result.ResultWhitespace != nil {
+		resp.ResultWhitespace = result.ResultWhitespace
+	}
+
+	if result.ResultWhitespaceEncoded != nil {
+		resp.ResultWhitespaceEncoded = result.ResultWhitespaceEncoded
 	}
 
 	return resp

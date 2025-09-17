@@ -3,64 +3,74 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/2509-hackz-ichthyo/main/api/internal/domain"
 )
 
-// DecodeCommand はデコーダユースケースが受け取る命令を表す。
+// WhitespaceCommand はユースケースが受け取る命令を表す。
 // フロントの入力をそのまま保持し、検証はユースケース層で行う。
-type DecodeCommand struct {
+type WhitespaceCommand struct {
 	CommandType string // 実行したい命令の種類（文字列表現）
-	Payload     string // Whitespace ソースコード文字列
+	Payload     string // Whitespace または 10 進数列の文字列表現
 }
 
-// DecodingResult はデコード結果の表現を提供する。
-// ドメイン層の Result を API 応答に変換しやすい形で保持する。
-type DecodingResult struct {
-	CommandType    domain.CommandType
-	ResultKind     domain.ResultKind
-	ResultDecimals []int
-	ResultBinaries []string
+// WhitespaceResult は変換結果を API 層へ渡すための DTO。
+// デコードとエンコードの双方に対応するため、必要なフィールドのみが値を持つ。
+type WhitespaceResult struct {
+	CommandType             domain.CommandType
+	ResultKind              domain.ResultKind
+	ResultDecimals          []int
+	ResultBinaries          []string
+	ResultWhitespace        *string
+	ResultWhitespaceEncoded *string
 }
 
-// DecoderUsecase はドメイン層の Decoder を用いて命令を評価する役割を担う。
-// 受け取った入力の検証と結果の整形を担当する。
-type DecoderUsecase struct {
+// WhitespaceUsecase はドメイン層の Decoder / Encoder を用いて命令を評価する。
+// 受け取った入力を検証し、結果を適切な DTO に詰め替えて返却する。
+type WhitespaceUsecase struct {
 	decoder domain.Decoder
+	encoder domain.Encoder
 }
 
-// NewDecoderUsecase は DecoderUsecase を生成する。
-// デコーダ実装を差し替えたい場合に備えて依存を注入する。
-func NewDecoderUsecase(decoder domain.Decoder) *DecoderUsecase {
-	return &DecoderUsecase{decoder: decoder}
+// NewWhitespaceUsecase は WhitespaceUsecase を生成する。
+// デコーダとエンコーダの実装を引数で受け取り、テスト容易性を高める。
+func NewWhitespaceUsecase(decoder domain.Decoder, encoder domain.Encoder) *WhitespaceUsecase {
+	return &WhitespaceUsecase{decoder: decoder, encoder: encoder}
 }
 
-// Execute は入力を検証し、Whitespace のデコード結果を返す。
-func (u *DecoderUsecase) Execute(_ context.Context, command DecodeCommand) (DecodingResult, error) {
+// Execute は入力を検証し、Whitespace の変換結果を返す。
+func (u *WhitespaceUsecase) Execute(_ context.Context, command WhitespaceCommand) (WhitespaceResult, error) {
 	if strings.TrimSpace(command.CommandType) == "" {
-		return DecodingResult{}, fmt.Errorf("%w: commandType must not be blank", ErrValidationFailed)
+		return WhitespaceResult{}, fmt.Errorf("%w: commandType must not be blank", ErrValidationFailed)
 	}
 	if command.Payload == "" {
-		return DecodingResult{}, fmt.Errorf("%w: payload must not be blank", ErrValidationFailed)
+		return WhitespaceResult{}, fmt.Errorf("%w: payload must not be blank", ErrValidationFailed)
 	}
 
 	commandType, err := domain.ParseCommandType(command.CommandType)
 	if err != nil {
-		return DecodingResult{}, err
+		return WhitespaceResult{}, err
 	}
 
 	domainCommand, err := domain.NewCommand(commandType, command.Payload)
 	if err != nil {
-		return DecodingResult{}, err
+		return WhitespaceResult{}, err
 	}
 
-	result, err := u.decoder.Execute(domainCommand)
+	var result domain.Result
+	switch commandType {
+	case domain.CommandTypeDecimalToWhitespace:
+		result, err = u.encoder.Execute(domainCommand)
+	default:
+		result, err = u.decoder.Execute(domainCommand)
+	}
 	if err != nil {
-		return DecodingResult{}, err
+		return WhitespaceResult{}, err
 	}
 
-	output := DecodingResult{
+	output := WhitespaceResult{
 		CommandType: commandType,
 		ResultKind:  result.Kind(),
 	}
@@ -71,6 +81,12 @@ func (u *DecoderUsecase) Execute(_ context.Context, command DecodeCommand) (Deco
 
 	if binaries, ok := result.Binaries(); ok {
 		output.ResultBinaries = binaries
+	}
+
+	if text, ok := result.Text(); ok {
+		output.ResultWhitespace = &text
+		encoded := url.PathEscape(text)
+		output.ResultWhitespaceEncoded = &encoded
 	}
 
 	return output, nil

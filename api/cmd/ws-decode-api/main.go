@@ -26,7 +26,8 @@ func main() {
 	}
 
 	decoder := domain.NewWhitespaceDecoder()
-	usecase := app.NewDecoderUsecase(decoder)
+	encoder := domain.NewWhitespaceEncoder()
+	usecase := app.NewWhitespaceUsecase(decoder, encoder)
 	router := httpserver.NewRouter(usecase)
 
 	srv := &http.Server{
