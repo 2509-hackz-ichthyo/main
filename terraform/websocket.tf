@@ -130,6 +130,17 @@ resource "aws_iam_role_policy" "lambda_websocket_policy" {
       {
         Effect = "Allow"
         Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem"
+        ]
+        Resource = [
+          aws_dynamodb_table.game_archive.arn,
+          "${aws_dynamodb_table.game_archive.arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "execute-api:ManageConnections"
         ]
         Resource = "${aws_apigatewayv2_api.hackz_ichthyo_websocket.execution_arn}/*/*"
@@ -607,6 +618,34 @@ output "acm_dns_validation_info" {
       validation_value  = dvo.resource_record_value
       validation_type   = dvo.resource_record_type
     }
+  }
+}
+
+# DynamoDB table for Game Archive
+resource "aws_dynamodb_table" "game_archive" {
+  name           = "game-archive"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "PK"
+  range_key      = "SK"
+
+  attribute {
+    name = "PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "SK"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
   }
 }
 

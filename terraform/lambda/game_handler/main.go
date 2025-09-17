@@ -307,6 +307,12 @@ func handleGameFinished(ctx context.Context, request events.APIGatewayWebsocketP
 		}
 	}
 
+	// Archive the game data
+	if err := archiveGameData(dynamo, finishRequest); err != nil {
+		fmt.Printf("Error archiving game data: %v\n", err)
+		// Don't fail the response, just log the error
+	}
+
 	fmt.Printf("Game finished: Room %s, Winner: %s\n", finishRequest.RoomId, finishRequest.Winner)
 	return events.APIGatewayProxyResponse{StatusCode: 200}, nil
 }
@@ -542,6 +548,83 @@ func updateRoomStatus(dynamo *dynamodb.DynamoDB, tableName, roomId, status strin
 
 	_, err := dynamo.UpdateItem(input)
 	return err
+}
+
+func archiveGameData(dynamo *dynamodb.DynamoDB, gameFinished GameFinishedRequest) error {
+	// Get room information
+	roomData, err := getRoomData(dynamo, gameFinished.RoomId)
+	if err != nil {
+		return fmt.Errorf("failed to get room data: %v", err)
+	}
+
+	// Create simple game data - for now we'll create a placeholder
+	// In a real implementation, you would collect the actual move history
+	gameDataText := "0 0 0\n1 1 1\n2 2 2" // Placeholder game data
+
+	// Create archive entry
+	archiveTableName := "game-archive"
+	gameId := gameFinished.RoomId // Using roomId as gameId for now
+	now := time.Now().UTC().Format(time.RFC3339)
+	ttl := time.Now().UTC().Add(30 * 24 * time.Hour).Unix() // 30 days TTL
+
+	archiveItem := map[string]*dynamodb.AttributeValue{
+		"PK":        {S: aws.String(fmt.Sprintf("GAME#%s", gameId))},
+		"SK":        {S: aws.String("ARCHIVE")},
+		"gameId":    {S: aws.String(gameId)},
+		"roomId":    {S: aws.String(gameFinished.RoomId)},
+		"player1Id": {S: aws.String(roomData.Player1Id)},
+		"player2Id": {S: aws.String(roomData.Player2Id)},
+		"winner":    {S: aws.String(gameFinished.Winner)},
+		"gamePhase": {S: aws.String("FINISHED")},
+		"endTime":   {S: aws.String(now)},
+		"gameData":  {S: aws.String(gameDataText)},
+		"ttl":       {N: aws.String(fmt.Sprintf("%d", ttl))},
+	}
+
+	putInput := &dynamodb.PutItemInput{
+		TableName: aws.String(archiveTableName),
+		Item:      archiveItem,
+	}
+
+	_, err = dynamo.PutItem(putInput)
+	if err != nil {
+		return fmt.Errorf("failed to archive game data: %v", err)
+	}
+
+	fmt.Printf("Successfully archived game %s\n", gameId)
+	return nil
+}
+
+func getRoomData(dynamo *dynamodb.DynamoDB, roomId string) (*GameRoom, error) {
+	getInput := &dynamodb.GetItemInput{
+		TableName: aws.String(os.Getenv("DYNAMODB_TABLE_NAME")),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String(fmt.Sprintf("ROOM#%s", roomId))},
+			"SK": {S: aws.String("METADATA")},
+		},
+	}
+
+	result, err := dynamo.GetItem(getInput)
+	if err != nil {
+		return nil, err
+	}
+
+	if result.Item == nil {
+		return nil, fmt.Errorf("room not found")
+	}
+
+	room := &GameRoom{
+		RoomId: roomId,
+	}
+
+	if player1Id, ok := result.Item["player1Id"]; ok && player1Id.S != nil {
+		room.Player1Id = *player1Id.S
+	}
+	if player2Id, ok := result.Item["player2Id"]; ok && player2Id.S != nil {
+		room.Player2Id = *player2Id.S
+	}
+
+	return room, nil
 }
 
 func main() {
