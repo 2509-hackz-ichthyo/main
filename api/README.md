@@ -59,21 +59,13 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
   - つまり、**変換対象の部分が 4 つとは 4 bit 2 進数、8 つとは 8 bit 2 進数 と言える**。
   - `L`が区切り文字となり、先頭の`SSS`はここでは特別な解釈をしない。
 - 各文を順に変換して結合する。
-  - `result_binaries` は 1 文ごとの 2 進数列、`binary_string` は空白区切りで連結したもの。
-  - `result_decimals` は 1 文ごとの 10 進数、`decimal_string` は空白区切りで連結したもの
-- `WhitespaceToBinary` の場合、Whitespace の各行がもつ変換対象の部分を、
-  写像を使って 2 進数列に変換し `result_binaries` に格納する。
-  また、空白区切りで連結したものを `binary_string` に格納する。
-- `WhitespaceToDecimal` の場合、Whitespace の各行がもつ変換対象の部分を、
-  写像を使って 2 進数列に変換し、
-  それを 10 進数に変換したものを `result_decimals` に格納する。
-  また、空白区切りで連結したものを `decimal_string` に格納する。
+- `WhitespaceToBinary` の場合、Whitespace の各行が持つ変換対象を 4bit/4bit/8bit に写像し、`result_binaries` に `1011 0110 11010010` のように空白区切りで格納する。全体を空白で連結した文字列が `binary_string`。
+- `WhitespaceToDecimal` の場合、各 4bit/8bit の 2 進数を 10 進数へ変換し、1 文を `"11 6 210"` のように表現して `result_decimals` に格納する。全体を空白で連結した文字列が `decimal_string`。
 - `BinariesToWhitespace` の場合、2 進数列のそれぞれ `0` を `S`、`1` を `T` に写像させ、
   １文の形式 `SSS {4 bit} LSSS {4 bit} LSSS {8 bit} L` に従って、
   スペースとタブ文字と改行で表現したものを `result_whitespace` に格納する。
   また、パーセントエンコードしたものを `result_whitespace_percent_encoded` に格納する。
-- `DecimalToWhitespace` の場合、10 進数列を 2 進数表記に変換し、
-  以降は`BinariesToWhitespace` と同様に変換する。
+- `DecimalToWhitespace` の場合、各文を `"4bitの10進数 4bitの10進数 8bitの10進数"` 形式で受け取り、これを 4bit/8bit の 2 進数へ変換したのち `BinariesToWhitespace` と同様に変換する。
 
 ## 開発
 
@@ -131,7 +123,7 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 
 - レスポンス例: 成功
   ```
-  {"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_binaries":["1011 0011 01111101","0010 0000 00000000","1000 1111 11100100"],"binary_string":"1011 0011 01111101 0010 0000 00000000 1000 1111 11100100","result_whitespace":["   \t \t\t\n     \t\t\n    \t\t\t\t\t \t\n","     \t \n       \n           \n","   \t   \n   \t\t\t\t\n   \t\t\t  \t  \n"],"result_whitespace_percent_encoded":["%20%20%20%09%20%09%09%0A%20%20%20%20%20%09%09%0A%20%20%20%20%09%09%09%09%09%20%09%0A","%20%20%20%20%20%09%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A","%20%20%20%09%20%20%20%0A%20%20%20%09%09%09%09%0A%20%20%20%09%09%09%20%20%09%20%20%0A"]}
+  {"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_whitespace":["   \t \t\t\n     \t\t\n    \t\t\t\t\t \t\n","     \t \n       \n           \n","   \t   \n   \t\t\t\t\n   \t\t\t  \t  \n"],"result_whitespace_percent_encoded":["%20%20%20%09%20%09%09%0A%20%20%20%20%20%09%09%0A%20%20%20%20%09%09%09%09%09%20%09%0A","%20%20%20%20%20%09%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A","%20%20%20%09%20%20%20%0A%20%20%20%09%09%09%09%0A%20%20%20%09%09%09%20%20%09%20%20%0A"]}
   ```
 
 ## 2 進数 → Whitespace
