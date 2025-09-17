@@ -1,13 +1,23 @@
-FROM golang:1.24.1-alpine
+FROM golang:1.25.1-alpine AS builder
 
 WORKDIR /app
 
-COPY . ./
+ENV CGO_ENABLED=0
 
+COPY go.mod go.sum ./
 RUN go mod download
 
-RUN go build -o main /app/main.go
+COPY . .
+RUN go build -o /usr/local/bin/ws-decode ./cmd/ws-decode-api
+
+FROM alpine:3.20
+
+WORKDIR /app
+
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /usr/local/bin/ws-decode /usr/local/bin/ws-decode
 
 EXPOSE 3000
 
-CMD /app/main
+ENTRYPOINT ["/usr/local/bin/ws-decode"]
