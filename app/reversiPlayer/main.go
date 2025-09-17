@@ -37,19 +37,19 @@ func NewGame() *Game {
 		fmt.Printf("ゲーム初期化エラー: %v\n", err)
 		return nil
 	}
-	
+
 	// 空のボードを初期化
 	board := &Board{}
-	
+
 	game := &Game{
 		gameData:    gameData,
 		board:       board,
-		currentMove: -1,      // まだ何も置いていない状態
-		timer:       0,       // タイマー初期化
-		interval:    3.0,     // 3秒間隔
-		isPlaying:   true,    // 自動再生開始
+		currentMove: -1,   // まだ何も置いていない状態
+		timer:       0,    // タイマー初期化
+		interval:    1.0,  // 1秒間隔
+		isPlaying:   true, // 自動再生開始
 	}
-	
+
 	fmt.Printf("ゲーム初期化完了。総手数: %d\n", gameData.GetMoveCount())
 	return game
 }
@@ -58,16 +58,16 @@ func (g *Game) Update() error {
 	if !g.isPlaying {
 		return nil
 	}
-	
+
 	// タイマーを更新（Ebitenは60FPS、1フレーム = 1/60秒）
 	g.timer += 1.0 / 60.0
-	
+
 	// 3秒経過したかチェック
 	if g.timer >= g.interval {
 		g.timer = 0 // タイマーリセット
 		g.placeNextPiece()
 	}
-	
+
 	return nil
 }
 
@@ -79,7 +79,7 @@ func (g *Game) placeNextPiece() {
 		g.isPlaying = false
 		return
 	}
-	
+
 	// 次の手を取得して配置
 	g.currentMove++
 	move, err := g.gameData.GetMove(g.currentMove)
@@ -87,10 +87,10 @@ func (g *Game) placeNextPiece() {
 		fmt.Printf("手の取得エラー: %v\n", err)
 		return
 	}
-	
+
 	// ボードに反映
 	g.board.Squares[move.Row][move.Col].Piece = &Piece{Color: move.Color}
-	
+
 	fmt.Printf("手%d: (%d,%d) 色=%d\n", g.currentMove+1, move.Row, move.Col, move.Color)
 }
 
@@ -113,7 +113,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		x2 := float32(BoardOffset + BoardSize*CellSize)
 		vector.StrokeLine(screen, x1, y, x2, y, 2, color.Black, false)
 	}
-	
+
 	// コマを描画
 	g.drawPieces(screen)
 }
@@ -127,14 +127,14 @@ func (g *Game) drawPieces(screen *ebiten.Image) {
 				// コマの位置を計算
 				centerX := float32(BoardOffset + col*CellSize + CellSize/2)
 				centerY := float32(BoardOffset + row*CellSize + CellSize/2)
-				radius := float32(CellSize / 2 - 4) // 少し余白を残す
-				
+				radius := float32(CellSize/2 - 4) // 少し余白を残す
+
 				// 色を取得してRGBAに変換
 				pieceColor := colorToRGB(square.Piece.Color)
-				
+
 				// 円を描画
 				vector.DrawFilledCircle(screen, centerX, centerY, radius, pieceColor, false)
-				
+
 				// 縁を描画（見やすくするため）
 				vector.StrokeCircle(screen, centerX, centerY, radius, 1, color.Black, false)
 			}
@@ -148,7 +148,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func main() {
 	fmt.Println("=== リバーシ対局再生プレーヤー開始 ===")
-	
+
 	// ゲームインスタンスを作成
 	game := NewGame()
 	if game == nil {
