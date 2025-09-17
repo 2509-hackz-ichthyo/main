@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 )
 
 // NewBoard は初期設定済みの新しいボードを作成する
@@ -78,6 +79,14 @@ func (g *Game) isBoardFull() bool {
 
 // placePiece は(x, y)にコマを置き、ルールに従って色変更を適用する
 func (g *Game) placePiece(x, y int) bool {
+	// オンラインモードでは、自分のターンでない場合は配置できない
+	if g.IsOnline && g.State == GameStateInGame {
+		// 自分のターンかどうかチェック
+		if (g.PlayerRole == "black" && !g.CurrentTurn) || (g.PlayerRole == "white" && g.CurrentTurn) {
+			return false
+		}
+	}
+
 	if !g.isValidMove(x, y) {
 		return false
 	}
@@ -109,6 +118,14 @@ func (g *Game) placePiece(x, y int) bool {
 
 	// 新しいコマを配置
 	g.Board.Squares[x][y].Piece = &Piece{Color: g.NextColor}
+
+	// オンラインモードでは、相手にコマ配置を通知
+	if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
+		err := g.WSConnection.MakeMove(g.RoomID, x, y, g.NextColor)
+		if err != nil {
+			log.Printf("Failed to send move to server: %v", err)
+		}
+	}
 
 	// ゲーム終了判定
 	if g.isBoardFull() {

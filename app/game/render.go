@@ -34,6 +34,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// 画面を薄いグレーでクリア
 	screen.Fill(color.RGBA{240, 240, 240, 255})
 
+	// オンラインモードでゲーム中でない場合は、状態画面を表示
+	if g.IsOnline && g.State != GameStateInGame {
+		g.drawStatusScreen(screen)
+		return
+	}
+
 	// ボードのグリッドを描画
 	for i := 0; i <= BoardSize; i++ {
 		x := float32(BoardOffset + i*CellSize)
@@ -103,6 +109,77 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		vector.DrawFilledCircle(screen, previewX, previewY, 20, nextColorRGB, false)
 		vector.StrokeCircle(screen, previewX, previewY, 20, 2, color.Black, false)
 	}
+}
+
+// drawStatusScreen は接続状態に応じた画面を描画する
+func (g *Game) drawStatusScreen(screen *ebiten.Image) {
+	if g.FontFace == nil {
+		return
+	}
+
+	var message string
+	var bgColor color.RGBA
+
+	switch g.State {
+	case GameStateDisconnected:
+		message = "サーバーとの接続が切断されました"
+		bgColor = color.RGBA{220, 220, 220, 255}
+	case GameStateConnecting:
+		message = "サーバーに接続中..."
+		bgColor = color.RGBA{200, 230, 255, 255}
+	case GameStateWaiting:
+		message = "新しいプレイヤーの到着を待っています..."
+		bgColor = color.RGBA{255, 248, 200, 255}
+	case GameStateError:
+		if g.ErrorMessage != "" {
+			message = g.ErrorMessage
+		} else {
+			message = "エラーが発生しました"
+		}
+		bgColor = color.RGBA{255, 200, 200, 255}
+	default:
+		message = "接続中..."
+		bgColor = color.RGBA{240, 240, 240, 255}
+	}
+
+	// 背景色を設定
+	screen.Fill(bgColor)
+
+	// プレイヤー情報を表示
+	if g.PlayerID != "" {
+		playerInfo := fmt.Sprintf("プレイヤーID: %s", g.PlayerID)
+		g.drawCenteredText(screen, playerInfo, 0, -50, color.RGBA{100, 100, 100, 255})
+	}
+
+	// メインメッセージを表示
+	g.drawCenteredText(screen, message, 0, 0, color.Black)
+
+	// 状態に応じた追加情報
+	if g.State == GameStateWaiting {
+		subMessage := "しばらくお待ちください"
+		g.drawCenteredText(screen, subMessage, 0, 50, color.RGBA{120, 120, 120, 255})
+	}
+}
+
+// drawCenteredText は画面中央にテキストを描画する（オフセット付き）
+func (g *Game) drawCenteredText(screen *ebiten.Image, message string, offsetX, offsetY int, textColor color.Color) {
+	if g.FontFace == nil {
+		return
+	}
+
+	// テキストの大きさを測定
+	textWidth, textHeight := text.Measure(message, g.FontFace, 0)
+
+	// 画面中央に配置（オフセット付き）
+	screenWidth, screenHeight := 800, 600
+	messageX := float64(screenWidth/2) - textWidth/2 + float64(offsetX)
+	messageY := float64(screenHeight/2) - textHeight/2 + float64(offsetY)
+
+	// テキストを描画
+	textOptions := &text.DrawOptions{}
+	textOptions.GeoM.Translate(messageX, messageY)
+	textOptions.ColorScale.ScaleWithColor(textColor)
+	text.Draw(screen, message, g.FontFace, textOptions)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

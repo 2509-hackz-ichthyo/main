@@ -11,6 +11,20 @@ const (
 	BoardSize   = 8
 	CellSize    = 60
 	BoardOffset = 50
+
+	// WebSocket エンドポイント
+	WebSocketURL = "wss://amsdtyktxi.execute-api.ap-northeast-1.amazonaws.com/production"
+)
+
+// ゲーム状態（WebSocket接続含む）
+type GameState int
+
+const (
+	GameStateDisconnected GameState = iota // WebSocket未接続
+	GameStateConnecting                    // WebSocket接続中
+	GameStateWaiting                       // マッチメイキング待機中
+	GameStateInGame                        // ゲーム中
+	GameStateError                         // エラー状態
 )
 
 // Piece は0-255の色を持つゲームの駒を表す
@@ -42,6 +56,15 @@ type Game struct {
 	GameOver    bool             // ゲーム終了フラグ
 	Winner      string           // 勝者（"黒" または "白"）
 	FontFace    *text.GoTextFace // 勝利メッセージ用フォント
+
+	// WebSocket関連
+	State        GameState     // 現在のゲーム状態
+	WSConnection *WSConnection // WebSocket接続
+	PlayerID     string        // プレイヤーID
+	RoomID       string        // ルームID
+	PlayerRole   string        // プレイヤーロール ("black" または "white")
+	IsOnline     bool          // オンラインモードフラグ
+	ErrorMessage string        // エラーメッセージ
 }
 
 // Position はボード上の位置を表す
