@@ -55,4 +55,5 @@ docker run -p 3000:3000 2509-hackz-ichthyo
 - フレームワーク: Gin
 - ポート: `3000`
 - メインエントリ: `cmd/ws-decode-api`
+- ディレクトリ構成: `internal/domain` (ドメイン), `internal/app` (ユースケース), `internal/server/httpserver` (HTTP サーバー)
 - 依存する外部ミドルウェアはありません

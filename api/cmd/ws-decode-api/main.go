@@ -9,12 +9,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/2509-hackz-ichthyo/main/api/internal/app"
 	"github.com/2509-hackz-ichthyo/main/api/internal/config"
 	"github.com/2509-hackz-ichthyo/main/api/internal/domain"
-	"github.com/2509-hackz-ichthyo/main/api/internal/interfaces/httpapi"
-	"github.com/2509-hackz-ichthyo/main/api/internal/usecases"
+	"github.com/2509-hackz-ichthyo/main/api/internal/server/httpserver"
 )
 
+// main は HTTP サーバーを起動し、Whitespace デコーダ API を提供する。
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -25,8 +26,8 @@ func main() {
 	}
 
 	decoder := domain.NewWhitespaceDecoder()
-	usecase := usecases.NewDecoderService(decoder)
-	router := httpapi.NewRouter(usecase)
+	usecase := app.NewDecoderUsecase(decoder)
+	router := httpserver.NewRouter(usecase)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.ServerPort,

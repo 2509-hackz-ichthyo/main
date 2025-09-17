@@ -1,4 +1,4 @@
-package httpapi
+package httpserver
 
 import (
 	"context"
@@ -8,17 +8,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2509-hackz-ichthyo/main/api/internal/app"
 	"github.com/2509-hackz-ichthyo/main/api/internal/domain"
-	"github.com/2509-hackz-ichthyo/main/api/internal/usecases"
 	"github.com/gin-gonic/gin"
 )
 
-// DecoderUsecase はハンドラが利用するユースケースの最小インタフェース。
+// DecoderUsecase はハンドラが依存する最小限のインタフェースを表す。
+// ユースケース層の実装は Execute メソッドのみを公開すれば良い。
 type DecoderUsecase interface {
-	Decode(ctx context.Context, input usecases.DecodeInput) (usecases.DecodeOutput, error)
+	Execute(ctx context.Context, command app.DecodeCommand) (app.DecodingResult, error)
 }
 
-// NewRouter は Gin の Engine を生成しルーティングを設定する。
+// NewRouter は Gin の Engine を生成し、エンドポイントを束ねる。
+// ここでミドルウェアやルーティングを一元的に設定する。
 func NewRouter(decoderUC DecoderUsecase) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
@@ -36,6 +38,7 @@ func NewRouter(decoderUC DecoderUsecase) *gin.Engine {
 }
 
 func decodeHandler(decoderUC DecoderUsecase) gin.HandlerFunc {
+	// decodeHandler は POST /v1/decode に届いたリクエストをユースケースへ委譲する。
 	return func(c *gin.Context) {
 		var req decodeRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -43,24 +46,25 @@ func decodeHandler(decoderUC DecoderUsecase) gin.HandlerFunc {
 			return
 		}
 
-		input := usecases.DecodeInput{
+		command := app.DecodeCommand{
 			CommandType: req.CommandType,
 			Payload:     req.Payload,
 		}
 
-		output, err := decoderUC.Decode(c.Request.Context(), input)
+		result, err := decoderUC.Execute(c.Request.Context(), command)
 		if err != nil {
 			handleUsecaseError(c, err)
 			return
 		}
 
-		c.JSON(http.StatusOK, newDecodeResponse(output))
+		c.JSON(http.StatusOK, newDecodeResponse(result))
 	}
 }
 
 func handleUsecaseError(c *gin.Context, err error) {
+	// handleUsecaseError はユースケース層から返却されたエラーを HTTP ステータスへ写像する。
 	switch {
-	case errors.Is(err, usecases.ErrValidationFailed):
+	case errors.Is(err, app.ErrValidationFailed):
 		writeError(c, http.StatusBadRequest, "入力値が不正です", err)
 	case errors.Is(err, domain.ErrInvalidPayload):
 		writeError(c, http.StatusBadRequest, "ペイロードが不正です", err)
@@ -74,6 +78,7 @@ func handleUsecaseError(c *gin.Context, err error) {
 }
 
 func writeError(c *gin.Context, status int, message string, err error) {
+	// writeError は共通のエラーレスポンス JSON を構築して返す。
 	c.JSON(status, gin.H{
 		"error":   message,
 		"details": err.Error(),
@@ -96,25 +101,25 @@ type decodeResponse struct {
 	BinaryString   *string  `json:"binary_string,omitempty"`
 }
 
-func newDecodeResponse(output usecases.DecodeOutput) decodeResponse {
+func newDecodeResponse(result app.DecodingResult) decodeResponse {
 	resp := decodeResponse{
-		CommandType:    string(output.CommandType),
-		ResultKind:     string(output.ResultKind),
-		ResultDecimals: output.ResultDecimals,
-		ResultBinaries: output.ResultBinaries,
+		CommandType:    string(result.CommandType),
+		ResultKind:     string(result.ResultKind),
+		ResultDecimals: result.ResultDecimals,
+		ResultBinaries: result.ResultBinaries,
 	}
 
-	if len(output.ResultDecimals) > 0 {
-		tokens := make([]string, len(output.ResultDecimals))
-		for i, value := range output.ResultDecimals {
+	if len(result.ResultDecimals) > 0 {
+		tokens := make([]string, len(result.ResultDecimals))
+		for i, value := range result.ResultDecimals {
 			tokens[i] = strconv.Itoa(value)
 		}
 		joined := strings.Join(tokens, " ")
 		resp.DecimalString = &joined
 	}
 
-	if len(output.ResultBinaries) > 0 {
-		joined := strings.Join(output.ResultBinaries, " ")
+	if len(result.ResultBinaries) > 0 {
+		joined := strings.Join(result.ResultBinaries, " ")
 		resp.BinaryString = &joined
 	}
 
