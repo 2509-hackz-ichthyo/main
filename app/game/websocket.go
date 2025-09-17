@@ -19,6 +19,8 @@ type WSMessage struct {
 	Role     string      `json:"role,omitempty"`
 	X        int         `json:"x,omitempty"`
 	Y        int         `json:"y,omitempty"`
+	Row      int         `json:"row,omitempty"`    // game-handler用
+	Col      int         `json:"col,omitempty"`    // game-handler用
 	Color    uint8       `json:"color,omitempty"`
 }
 
@@ -161,12 +163,13 @@ func (ws *WSConnection) JoinGame(playerID string) error {
 }
 
 // ゲーム内でのコマ移動を送信
-func (ws *WSConnection) MakeMove(roomID string, x, y int, color uint8) error {
+func (ws *WSConnection) MakeMove(userID, roomID string, x, y int, color uint8) error {
 	message := WSMessage{
 		Action: "makeMove",  // Terraformのroute_keyと一致させる
+		UserID: userID,     // game-handlerが期待するuserId
 		RoomID: roomID,
-		X:      x,
-		Y:      y,
+		Row:    x,          // game-handlerはrow/colを期待
+		Col:    y,
 		Color:  color,
 	}
 	return ws.SendMessage(message)

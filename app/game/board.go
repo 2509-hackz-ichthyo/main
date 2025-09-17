@@ -121,7 +121,7 @@ func (g *Game) placePiece(x, y int) bool {
 
 	// オンラインモードでは、相手にコマ配置を通知
 	if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
-		err := g.WSConnection.MakeMove(g.RoomID, x, y, g.NextColor)
+		err := g.WSConnection.MakeMove(g.PlayerID, g.RoomID, x, y, g.NextColor)
 		if err != nil {
 			log.Printf("Failed to send move to server: %v", err)
 		}
