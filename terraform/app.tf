@@ -30,6 +30,14 @@ resource "aws_s3_object" "main_wasm" {
   etag         = filemd5("../app/main.wasm")
 }
 
+resource "aws_s3_object" "hackz_ichthyo_24_7" {
+  bucket       = aws_s3_bucket.hackz_ichthyo_bucket.id
+  key          = "24-7.html"
+  source       = "../app/24-7.html"
+  content_type = "text/html"
+  etag         = filemd5("../app/24-7.html")
+}
+
 resource "aws_s3_bucket_policy" "policy" {
   depends_on = [
     aws_s3_bucket.hackz_ichthyo_bucket,
