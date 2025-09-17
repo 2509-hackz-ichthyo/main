@@ -27,7 +27,7 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
     ```json
     {
       "command_type": "WhitespaceToBinary",
-      "payload": "SSS..." // 実際には空白・タブ・改行からなる文字列
+      "payload": "SSSTSTTLSSSSTTSLSSSTTSTSSTSL" // 実際には空白・タブ・改行からなる文字列
     }
     ```
     - `command_type`: `WhitespaceToDecimal` / `WhitespaceToBinary` / `DecimalToWhitespace`
@@ -37,8 +37,8 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
     {
       "command_type": "WhitespaceToBinary",
       "result_kind": "BinarySequence",
-      "result_binaries": ["0000", "1111"],
-      "binary_string": "0000 1111"
+      "result_binaries": ["1011011011010010"],
+      "binary_string": "1011011011010010"
     }
     ```
     - 10 進数への変換時は `result_decimals` / `decimal_string` がセットされます
@@ -49,19 +49,31 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
 - 入力は 1 文～最大 64 文。
 - 1 文の構造（空白などを記号化して説明）:
   ```
-  SSS {TまたはSが4つ} L
-  ```
-  または
-  ```
-  SSS {TまたはSが8つ} L
+  SSS {TまたはSが4つ} LSSS {TまたはSが4つ} LSSS {TまたはSが8つ} L
   ```
   - `S` = スペース
   - `T` = タブ文字
   - `L` = 改行
-- `{TまたはSが4つ}` や `{TまたはSが8つ}` の部分を変換対象とし、`S` を `0`、`T` を `1` に写像する。
-- 各文を順に変換して結合する。`result_binaries` は 1 文ごとの 2 進数列、`binary_string` は空白区切りで連結したもの。
-- `WhitespaceToDecimal` の場合は各文字を ASCII コードに変換して 10 進数列として返す。
-- `DecimalToWhitespace` の場合は `32` / `9` / `10` のみを受け付け、対応する Whitespace 文字（スペース / タブ / 改行）を復元する。
+- `{TまたはSが4つ}` や `{TまたはSが8つ}` の部分を変換対象とし、
+  `S` を `0`、`T` を `1` に写像する。
+  - つまり、**変換対象の部分が 4 つとは 4 bit 2 進数、8 つとは 8 bit 2 進数 と言える**。
+  - `L`が区切り文字となり、先頭の`SSS`はここでは特別な解釈をしない。
+- 各文を順に変換して結合する。
+  - `result_binaries` は 1 文ごとの 2 進数列、`binary_string` は空白区切りで連結したもの。
+  - `result_decimals` は 1 文ごとの 10 進数、`decimal_string` は空白区切りで連結したもの
+- `WhitespaceToBinary` の場合、Whitespace の各行がもつ変換対象の部分を、
+  写像を使って 2 進数列に変換し `result_binaries` に格納する。
+  また、空白区切りで連結したものを `binary_string` に格納する。
+- `WhitespaceToDecimal` の場合、Whitespace の各行がもつ変換対象の部分を、
+  写像を使って 2 進数列に変換し、
+  それを 10 進数に変換したものを `result_decimals` に格納する。
+  また、空白区切りで連結したものを `decimal_string` に格納する。
+- `BinariesToWhitespace` の場合、2 進数列のそれぞれ `0` を `S`、`1` を `T` に写像させ、
+  １文の形式 `SSS {4 bit} LSSS {4 bit} LSSS {8 bit} L` に従って、
+  スペースとタブ文字と改行で表現したものを `result_whitespace` に格納する。
+  また、パーセントエンコードしたものを `result_whitespace_percent_encoded` に格納する。
+- `DecimalToWhitespace` の場合、10 進数列を 2 進数表記に変換し、
+  以降は`BinariesToWhitespace` と同様に変換する。
 
 ## 開発
 
@@ -90,35 +102,49 @@ curl -s http://localhost:3000/healthz
 
 ```
 curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
--d '{"command_type":"WhitespaceToDecimal","payload":" \t\n"}'
+-d '{"command_type":"WhitespaceToDecimal","payload":["   \t \t\t\n    \t\t \n   \t\t \t  \t \n","       \n       \n           \n"]}'
 ```
 
 - レスポンス例: 成功
   ```
-  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":[32,9,10],"decimal_string":"32 9 10"}
+  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":["8346", "0"],"decimal_string":"8346 0"}
   ```
 
 ## Whitespace（パーセントエンコード） → 2 進数
 
+- 次の例では、改行は LF 改行(%0A)でエンコードだが、
+  CR 改行(%0D) や、 CRLF 改行(%0D%0A) でも動作します。
+
 ```
 curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
--d '{"command_type":"WhitespaceToBinary","payload":"%20%20%20%20%09%20%09%0A"}'
+-d '{"command_type":"WhitespaceToBinary","payload":["%20%20%20%09%20%09%09%0A%20%20%20%20%09%09%20%0A%20%20%20%09%09%20%09%20%20%09%20%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A"]}'
 ```
 
 - レスポンス例: 成功
   ```
-  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["0101"],"binary_string":"0101"}
+  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["1011011011010010", "0000000000000000"],"binary_string":"1011011011010010 0000000000000000"}
   ```
 
 ## 10 進数 → Whitespace
 
 ```
 curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
--d '{"command_type":"DecimalToWhitespace","payload":"32 9 10"}'
+-d '{"command_type":"DecimalToWhitespace","payload":["8346","0"]}'
 ```
 
 - レスポンス例: 成功
+  ```
+  {"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_whitespace":["   \t \t\t\n    \t\t \n   \t\t \t  \t \n","       \n       \n           \n"],"result_whitespace_percent_encoded":["%20%20%20%09%20%09%09%0A%20%20%20%20%09%09%20%0A%20%20%20%09%09%20%09%20%20%09%20%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A"]}
+  ```
+
+## 2 進数 → Whitespace
 
 ```
-{"command_type":"DecimalToWhitespace","result_kind":"Whitespace","result_whitespace":" \t\n","result_whitespace_percent_encoded":"%20%09%0A"}
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
+-d '{"command_type":"BinariesToWhitespace","payload":["1011011011010010","0000000000000000"]}'
 ```
+
+- レスポンス例: 成功
+  ```
+  {"command_type":"BinariesToWhitespace","result_kind":"Whitespace","result_whitespace":["   \t \t\t\n    \t\t \n   \t\t \t  \t \n","       \n       \n           \n"],"result_whitespace_percent_encoded":["%20%20%20%09%20%09%09%0A%20%20%20%20%09%09%20%0A%20%20%20%09%09%20%09%20%20%09%20%0A","%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20%20%20%20%0A"]}
+  ```
