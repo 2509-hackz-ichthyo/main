@@ -171,9 +171,57 @@ func (g *Game) handleOpponentMove(x, y int, color uint8) {
 
 // ゲーム状態更新を処理
 func (g *Game) handleGameUpdate(message WSMessage) {
-	// ここで盤面の同期やゲーム終了判定などを処理
-	// 現在は基本ログ出力のみ
-	log.Printf("Game state synchronization: %+v", message.Data)
+	if message.GameState == nil {
+		log.Printf("No game state data in update message")
+		return
+	}
+
+	gameState := message.GameState
+	log.Printf("Synchronizing game state: Turn %d, Current player: %s, Next color: %d",
+		gameState.TurnNumber, gameState.CurrentPlayer, gameState.NextColor)
+
+	// 盤面状態を同期
+	if len(gameState.BoardState) == BoardSize {
+		for x := 0; x < BoardSize; x++ {
+			if len(gameState.BoardState[x]) == BoardSize {
+				for y := 0; y < BoardSize; y++ {
+					color := gameState.BoardState[x][y]
+					if color != 0 {
+						// サーバーからの盤面データを反映
+						g.Board.Squares[x][y].Piece = &Piece{Color: uint8(color)}
+					} else {
+						// 空のマスは nil にする
+						g.Board.Squares[x][y].Piece = nil
+					}
+				}
+			}
+		}
+		log.Printf("Board state synchronized")
+	}
+
+	// ターン管理を同期
+	g.NextColor = uint8(gameState.NextColor)
+
+	// 現在のプレイヤーがターンかどうかを判定
+	g.CurrentTurn = (gameState.CurrentPlayer == g.PlayerID)
+	if g.CurrentTurn {
+		log.Printf("It's your turn! Next color: %d", g.NextColor)
+	} else {
+		log.Printf("Waiting for opponent's turn. Next color: %d", g.NextColor)
+	}
+
+	// ゲーム終了判定
+	if gameState.GamePhase == "FINISHED" {
+		g.GameOver = true
+		if gameState.Winner != "" {
+			g.Winner = gameState.Winner
+			if gameState.Winner == g.PlayerID {
+				log.Printf("You won!")
+			} else {
+				log.Printf("Opponent won!")
+			}
+		}
+	}
 }
 
 func (g *Game) Update() error {

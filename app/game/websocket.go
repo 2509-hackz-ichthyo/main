@@ -8,20 +8,32 @@ import (
 	"time"
 )
 
+// ServerGameState サーバーから受信するゲーム状態
+type ServerGameState struct {
+	RoomID        string    `json:"roomId"`
+	TurnNumber    int       `json:"turnNumber"`
+	CurrentPlayer string    `json:"currentPlayer"`
+	NextColor     int       `json:"nextColor"`
+	BoardState    [][]int   `json:"boardState"`
+	GamePhase     string    `json:"gamePhase"`
+	Winner        string    `json:"winner,omitempty"`
+}
+
 // WebSocketメッセージの構造体
 type WSMessage struct {
-	Action   string      `json:"action"`
-	Type     string      `json:"type,omitempty"`
-	Data     interface{} `json:"data,omitempty"`
-	UserID   string      `json:"userId,omitempty"`
-	PlayerID string      `json:"playerId,omitempty"`
-	RoomID   string      `json:"roomId,omitempty"`
-	Role     string      `json:"role,omitempty"`
-	X        int         `json:"x,omitempty"`
-	Y        int         `json:"y,omitempty"`
-	Row      int         `json:"row,omitempty"`    // game-handler用
-	Col      int         `json:"col,omitempty"`    // game-handler用
-	Color    uint8       `json:"color,omitempty"`
+	Action    string           `json:"action"`
+	Type      string           `json:"type,omitempty"`
+	Data      interface{}      `json:"data,omitempty"`
+	GameState *ServerGameState `json:"gameState,omitempty"`  // サーバーからのゲーム状態
+	UserID    string           `json:"userId,omitempty"`
+	PlayerID  string           `json:"playerId,omitempty"`
+	RoomID    string           `json:"roomId,omitempty"`
+	Role      string           `json:"role,omitempty"`
+	X         int              `json:"x,omitempty"`
+	Y         int              `json:"y,omitempty"`
+	Row       int              `json:"row,omitempty"`    // game-handler用
+	Col       int              `json:"col,omitempty"`    // game-handler用
+	Color     uint8            `json:"color,omitempty"`
 }
 
 // WebSocket接続状態
