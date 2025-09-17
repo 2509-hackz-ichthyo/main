@@ -404,6 +404,141 @@ resource "aws_acm_certificate" "websocket_cert" {
   }
 }
 
+# ===== CLEANUP HANDLER =====
+
+# Data source to create ZIP file for Cleanup Lambda
+data "archive_file" "cleanup_handler_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/cleanup_handler"
+  output_path = "${path.module}/lambda/cleanup_handler.zip"
+  excludes    = ["*.zip", "go.sum"]
+}
+
+# Cleanup Handler Lambda Function
+resource "aws_lambda_function" "cleanup_handler" {
+  filename         = data.archive_file.cleanup_handler_zip.output_path
+  function_name    = "hackz-ichthyo-cleanup-handler"
+  role            = aws_iam_role.lambda_cleanup_role.arn
+  handler         = "bootstrap"
+  source_code_hash = data.archive_file.cleanup_handler_zip.output_base64sha256
+  runtime         = "provided.al2"
+  timeout         = 300 # 5 minutes
+
+  environment {
+    variables = {
+      GAME_SERVICE_TABLE_NAME   = aws_dynamodb_table.game_service.name
+      WEBSOCKET_TABLE_NAME      = aws_dynamodb_table.websocket_connections.name
+    }
+  }
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+
+  depends_on = [
+    aws_iam_role_policy.lambda_cleanup_policy,
+    aws_cloudwatch_log_group.cleanup_handler_logs,
+  ]
+}
+
+# CloudWatch Log Group for Cleanup Handler
+resource "aws_cloudwatch_log_group" "cleanup_handler_logs" {
+  name              = "/aws/lambda/hackz-ichthyo-cleanup-handler"
+  retention_in_days = 7
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
+# IAM Role for Cleanup Lambda
+resource "aws_iam_role" "lambda_cleanup_role" {
+  name = "hackz-ichthyo-cleanup-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
+# IAM Policy for Cleanup Lambda
+resource "aws_iam_role_policy" "lambda_cleanup_policy" {
+  name = "hackz-ichthyo-cleanup-lambda-policy"
+  role = aws_iam_role.lambda_cleanup_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:DeleteItem",
+          "dynamodb:BatchWriteItem"
+        ]
+        Resource = [
+          aws_dynamodb_table.game_service.arn,
+          "${aws_dynamodb_table.game_service.arn}/*",
+          aws_dynamodb_table.websocket_connections.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
+# EventBridge Rule for periodic cleanup (every 5 minutes)
+resource "aws_cloudwatch_event_rule" "cleanup_schedule" {
+  name                = "hackz-ichthyo-cleanup-schedule"
+  description         = "Trigger cleanup handler every 5 minutes"
+  schedule_expression = "rate(5 minutes)"
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
+# EventBridge Target to invoke Cleanup Lambda
+resource "aws_cloudwatch_event_target" "cleanup_target" {
+  rule      = aws_cloudwatch_event_rule.cleanup_schedule.name
+  target_id = "CleanupHandlerTarget"
+  arn       = aws_lambda_function.cleanup_handler.arn
+}
+
+# Permission for EventBridge to invoke Cleanup Lambda
+resource "aws_lambda_permission" "allow_eventbridge_cleanup" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cleanup_handler.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.cleanup_schedule.arn
+}
+
 # ACM証明書ARNの出力
 output "acm_certificate_arn" {
   description = "ACM証明書のARN"

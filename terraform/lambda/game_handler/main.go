@@ -28,13 +28,13 @@ type MakeMoveRequest struct {
 
 // GameState represents the current game state
 type GameState struct {
-	RoomId        string     `json:"roomId"`
-	TurnNumber    int        `json:"turnNumber"`
-	CurrentPlayer string     `json:"currentPlayer"`
-	NextColor     int        `json:"nextColor"`
-	BoardState    [][]int    `json:"boardState"`
-	GamePhase     string     `json:"gamePhase"`
-	Winner        string     `json:"winner,omitempty"`
+	RoomId        string  `json:"roomId"`
+	TurnNumber    int     `json:"turnNumber"`
+	CurrentPlayer string  `json:"currentPlayer"`
+	NextColor     int     `json:"nextColor"`
+	BoardState    [][]int `json:"boardState"`
+	GamePhase     string  `json:"gamePhase"`
+	Winner        string  `json:"winner,omitempty"`
 }
 
 // GameUpdateResponse represents the response sent to players
@@ -367,7 +367,7 @@ func isValidMove(board [][]int, row, col, color int) bool {
 	if row < 0 || row >= 8 || col < 0 || col >= 8 {
 		return false
 	}
-	
+
 	// Check if cell is empty
 	if board[row][col] != 0 {
 		return false
