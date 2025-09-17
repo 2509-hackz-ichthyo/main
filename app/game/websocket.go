@@ -8,6 +8,20 @@ import (
 	"time"
 )
 
+// WebSocketメッセージの構造体
+type WSMessage struct {
+	Action   string      `json:"action"`
+	Type     string      `json:"type,omitempty"`
+	Data     interface{} `json:"data,omitempty"`
+	UserID   string      `json:"userId,omitempty"`
+	PlayerID string      `json:"playerId,omitempty"`
+	RoomID   string      `json:"roomId,omitempty"`
+	Role     string      `json:"role,omitempty"`
+	X        int         `json:"x,omitempty"`
+	Y        int         `json:"y,omitempty"`
+	Color    uint8       `json:"color,omitempty"`
+}
+
 // WebSocket接続状態
 type ConnectionState int
 
@@ -18,20 +32,7 @@ const (
 	Error
 )
 
-// WebSocketメッセージ構造体
-type WSMessage struct {
-	Action   string      `json:"action,omitempty"`
-	Type     string      `json:"type,omitempty"`
-	Data     interface{} `json:"data,omitempty"`
-	PlayerID string      `json:"playerId,omitempty"`
-	RoomID   string      `json:"roomId,omitempty"`
-	Role     string      `json:"role,omitempty"`
-	X        int         `json:"x,omitempty"`
-	Y        int         `json:"y,omitempty"`
-	Color    uint8       `json:"color,omitempty"`
-}
-
-// WebSocketコネクション管理
+// WebSocket接続のラッパー
 type WSConnection struct {
 	websocket js.Value
 	state     ConnectionState
@@ -94,9 +95,19 @@ func (ws *WSConnection) setupEventHandlers() {
 		log.Printf("WebSocket message received: %s", data)
 
 		var message WSMessage
-		if err := json.Unmarshal([]byte(data), &message); err != nil {
-			log.Printf("Failed to parse WebSocket message: %v", err)
+
+		// まず一般的なJSON構造として解析
+		var rawData map[string]interface{}
+		if err := json.Unmarshal([]byte(data), &rawData); err != nil {
+			log.Printf("Failed to parse JSON: %v", err)
 			return nil
+		}
+
+		// WSMessage構造にマッピング
+		if err := json.Unmarshal([]byte(data), &message); err != nil {
+			log.Printf("Failed to parse as WSMessage, trying as raw data: %v", err)
+			// WSMessage形式でパースできない場合は、rawDataをDataフィールドに格納
+			message.Data = rawData
 		}
 
 		if ws.onMessage != nil {
@@ -143,15 +154,16 @@ func (ws *WSConnection) SendMessage(message WSMessage) error {
 func (ws *WSConnection) JoinGame(playerID string) error {
 	message := WSMessage{
 		Action:   "joinGame",
-		PlayerID: playerID,
+		UserID:   playerID, // サーバー側のmatchmaking_handlerが期待するuserId
+		PlayerID: playerID, // 内部的な互換性のため保持
 	}
 	return ws.SendMessage(message)
 }
 
-// コマ配置を送信
+// ゲーム内でのコマ移動を送信
 func (ws *WSConnection) MakeMove(roomID string, x, y int, color uint8) error {
 	message := WSMessage{
-		Action: "makeMove",
+		Action: "move",
 		RoomID: roomID,
 		X:      x,
 		Y:      y,

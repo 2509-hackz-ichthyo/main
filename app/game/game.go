@@ -85,6 +85,29 @@ func (g *Game) initializeWebSocket() {
 func (g *Game) handleWebSocketMessage(message WSMessage) {
 	log.Printf("Handling WebSocket message: %+v", message)
 
+	// エラーレスポンスのハンドリング（Type フィールドが空の場合）
+	if message.Type == "" && message.Action == "" {
+		// JSON構造からエラーメッセージを検出
+		if dataMap, ok := message.Data.(map[string]interface{}); ok {
+			if errMsg, exists := dataMap["message"]; exists {
+				log.Printf("Server error message: %v", errMsg)
+				if errStr, ok := errMsg.(string); ok && errStr == "Internal server error" {
+					g.State = GameStateError
+					g.ErrorMessage = "サーバー内部エラーが発生しました。再試行してください。"
+					return
+				}
+			}
+
+			// connectionIdが含まれている場合は、サーバーからのエラー応答
+			if _, exists := dataMap["connectionId"]; exists {
+				log.Printf("Received error response from server: %+v", dataMap)
+				g.State = GameStateError
+				g.ErrorMessage = "サーバーとの通信中にエラーが発生しました"
+				return
+			}
+		}
+	}
+
 	switch message.Type {
 	case "matchFound":
 		log.Printf("Match found! Room: %s, Role: %s", message.RoomID, message.Role)
@@ -93,17 +116,22 @@ func (g *Game) handleWebSocketMessage(message WSMessage) {
 		g.State = GameStateInGame
 
 		// プレイヤーロールに基づいてターンを設定
-		if message.Role == "black" {
+		if message.Role == "PLAYER1" || message.Role == "black" {
 			g.CurrentTurn = true
-			log.Printf("You are playing as BLACK (先手)")
+			log.Printf("You are PLAYER1 (先手)")
 		} else {
 			g.CurrentTurn = false
-			log.Printf("You are playing as WHITE (後手)")
+			log.Printf("You are PLAYER2 (後手)")
 		}
 
 		// ゲーム開始時に初期盤面をリセット（必要に応じて）
 		g.GameOver = false
 		g.Winner = ""
+
+	case "waiting":
+		log.Printf("Waiting for opponent...")
+		g.State = GameStateWaiting
+		g.ErrorMessage = "新しいプレイヤーの到着を待っています..."
 
 	case "gameUpdate":
 		log.Printf("Game update received: %+v", message.Data)
@@ -120,6 +148,8 @@ func (g *Game) handleWebSocketMessage(message WSMessage) {
 
 	default:
 		log.Printf("Unknown message type: %s", message.Type)
+		// メッセージ全体をデバッグ情報として出力
+		log.Printf("Full message details: Action=%s, Type=%s, Data=%+v", message.Action, message.Type, message.Data)
 	}
 }
 
