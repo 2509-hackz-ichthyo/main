@@ -26,8 +26,8 @@ func NewGame() *Game {
 		WSConnection: NewWebSocketConnection(),
 	}
 
-	// 最初の手の色を生成
-	game.generateNextColor()
+    // 最初の手の色はサーバ authoritative に変更: ここでは生成しない
+    // g.NextColor はサーバからの最初のメッセージ (matchFound / gameUpdate / piecePlaced) で設定される想定
 
 	// フォントを初期化
 	if err := game.initializeFont(); err != nil {
@@ -169,27 +169,34 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 		return
 	}
 
-	// 自分の手か相手の手かをチェック
-	isMyMove := (message.UserID == g.PlayerID)
-
-	if isMyMove {
-		log.Printf("Confirmed my piece placement at (%d, %d) with color %d", x, y, color)
-	} else {
-		log.Printf("Processing opponent's piece placement at (%d, %d) with color %d", x, y, color)
-		// 相手の手の場合、サーバーで検証済みなので直接配置
-		if x >= 0 && x < BoardSize && y >= 0 && y < BoardSize {
-			g.Board.Squares[x][y].Piece = &Piece{Color: color}
-			log.Printf("Applied opponent's move successfully at (%d, %d)", x, y)
-			
-			// 相手の手を適用後、終了判定を実行
-			if g.isBoardFull() {
-				g.GameOver = true
-				g.calculateWinner()
-				log.Printf("Game ended after opponent's move! Winner: %s", g.Winner)
+	// サーバ確定手を盤面へ反映 (挟み処理を再計算するため placePiece 相当を再実装)
+	if g.Board.Squares[x][y].IsEmpty() {
+		// 既存ロジックに合わせて挟みライン検出
+		flankingLines := g.findFlankingPieces(x, y)
+		for _, line := range flankingLines {
+			if len(line) > 0 {
+				end := line[len(line)-1]
+				a1 := color
+				a2 := g.Board.Squares[end.X][end.Y].Piece.Color
+				for _, pos := range line {
+					piece := g.Board.Squares[pos.X][pos.Y].Piece
+					b1 := piece.Color
+					newColor := uint8((uint16(a1) + uint16(a2) + uint16(b1)) / 3)
+					piece.Color = newColor
+				}
 			}
-		} else {
-			log.Printf("Invalid coordinates for opponent's move: (%d, %d)", x, y)
 		}
+		g.Board.Squares[x][y].Piece = &Piece{Color: color}
+		log.Printf("Applied confirmed move at (%d, %d) color %d", x, y, color)
+	} else {
+		// 既にコマが存在する場合は上書きしない (サーバと競合があるケースは将来 syncState で解決)
+		log.Printf("Square (%d,%d) already occupied; skipping overwrite", x, y)
+	}
+
+	if g.isBoardFull() {
+		g.GameOver = true
+		g.calculateWinner()
+		log.Printf("Game ended! Winner: %s", g.Winner)
 	}
 
 	// ターン情報を更新
@@ -299,7 +306,7 @@ func (g *Game) Update() error {
 		return nil
 	}
 
-	// マウスクリックを処理
+	// マウスクリックを処理 (サーバ確定後にのみ配置: Optimistic Update 無効化)
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		mx, my := ebiten.CursorPosition()
 
@@ -321,19 +328,16 @@ func (g *Game) Update() error {
 				return nil
 			}
 
-			// 有効な手の場合、サーバーに送信してからローカル処理
+			// サーバーに送信 (サーバ応答 piecePlaced で確定配置)
 			if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
 				err := g.WSConnection.MakeMove(g.PlayerID, g.RoomID, boardX, boardY, g.NextColor)
 				if err != nil {
 					log.Printf("Failed to send move to server: %v", err)
 					return nil
 				}
-			}
-
-			// サーバー送信成功後、ローカルで盤面処理（ゲーム終了判定を含む）
-			success := g.placePiece(boardX, boardY)
-			if !success {
-				log.Printf("Failed to place piece at (%d, %d) - unexpected error", boardX, boardY)
+			} else if !g.IsOnline {
+				// オフライン時のみ即時配置
+				_ = g.placePiece(boardX, boardY)
 			}
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"math/rand"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -23,7 +24,7 @@ type MakeMoveRequest struct {
 	RoomId string `json:"roomId"`
 	Row    int    `json:"row"`
 	Col    int    `json:"col"`
-	Color  int    `json:"color"`
+	Color  int    `json:"color"` // クライアント後方互換用(サーバでは無視)
 }
 
 // GameFinishedRequest represents the request body for gameFinished
@@ -185,8 +186,12 @@ func handleMakeMove(ctx context.Context, request events.APIGatewayWebsocketProxy
 		fmt.Printf("Game finished due to full board (64 moves)")
 	}
 
-	// Generate next color (0-255)
-	nextColor := generateNextColor()
+	// 現在ターンで使用する色 (クライアント送信値は無視しサーバ authoritative)
+	thisTurnColor := currentGameState.NextColor
+
+	// 次ターンの色を生成 (先行:0-128, 後攻:129-255)
+	isNextPlayer1 := (nextPlayer == room.Player1Id)
+	nextColor := generateNextColorForPlayer(isNextPlayer1)
 
 	// Create new simplified game state
 	newGameState := GameState{
@@ -218,7 +223,7 @@ func handleMakeMove(ctx context.Context, request events.APIGatewayWebsocketProxy
 		UserId:     moveRequest.UserId,
 		Row:        moveRequest.Row,
 		Col:        moveRequest.Col,
-		Color:      moveRequest.Color,
+		Color:      thisTurnColor,
 		NextPlayer: nextPlayer,
 		NextColor:  nextColor,
 		GamePhase:  gamePhase,
@@ -368,11 +373,12 @@ func createInitialGameState(dynamo *dynamodb.DynamoDB, tableName, roomId string)
 	}
 
 	// Initial game state without board (clients handle initial board setup)
+	initialColor := generateNextColorForPlayer(true) // Player1 range
 	gameState := &GameState{
 		RoomId:        roomId,
 		TurnNumber:    0,
 		CurrentPlayer: room.Player1Id, // Player1 always goes first
-		NextColor:     64,             // Start with middle gray color
+		NextColor:     initialColor,
 		GamePhase:     "PLAYING",
 	}
 
@@ -461,10 +467,14 @@ func getRoomPlayers(dynamo *dynamodb.DynamoDB, tableName, roomId string) ([]Play
 // Board validation and game logic moved to client-side
 // Server now only handles turn management and basic position validation
 
-func generateNextColor() int {
-	// Generate a random color between 0-255
-	// For simplicity, using timestamp modulo
-	return int(time.Now().UnixNano() % 256)
+// generateNextColorForPlayer returns a color in the specified player's range.
+// PLAYER1: 0-128, PLAYER2: 129-255
+func generateNextColorForPlayer(isPlayer1 bool) int {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	if isPlayer1 {
+		return r.Intn(129) // 0-128 inclusive
+	}
+	return 129 + r.Intn(127) // 129-255 inclusive (129..255 -> 127 values)
 }
 
 func saveGameState(dynamo *dynamodb.DynamoDB, tableName string, gameState GameState) error {
