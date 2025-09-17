@@ -37,9 +37,9 @@ aws ecs update-service --cluster hackz-ichthyo-ecs-cluster --service hackz-ichth
 
 ## ユビキタス言語
 
-- Command: 解析済みの 1 命令（`CommandType` と `Payload` を持つ純粋オブジェクト）
-  - CommandType: `StringToAscii` / `AsciiToString`
-  - Payload: 命令タイプに適合する値
+- Command: 解析済みの 1 命令（`Type` と `Payload` を持つ純粋オブジェクト）
+  - Type: 命令の種類(`StringToAscii` / `AsciiToString`)
+  - Payload: 変換の対象となるリテラルで、命令タイプ(Type)に適合する値
     - `StringToAscii` の場合: 通常文字列（例: `"ABC"`）
     - `AsciiToString` の場合: 10 進数列（例: `65 66 67`）
 - Decoder: `Command -> Result` を定義（純粋関数的）、ドメインサービス
