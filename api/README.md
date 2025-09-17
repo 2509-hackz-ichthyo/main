@@ -120,7 +120,7 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 
 - レスポンス例: 成功
   ```
-  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["1011011011010010","0000000000000000"],"binary_string":"1011011011010010 0000000000000000"}
+  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["1011 0110 11010010","0000 0000 00000000"],"binary_string":"1011 0110 11010010 0000 0000 00000000"}
   ```
 
 ## 10 進数 → Whitespace
@@ -137,7 +137,7 @@ curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/js
 ## 2 進数 → Whitespace
 
 ```
-curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"BinariesToWhitespace","payload":["1011011011010010","0000000000000000"]}'
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' -d '{"command_type":"BinariesToWhitespace","payload":["1011 0110 11010010","0000 0000 00000000"]}'
 ```
 
 - レスポンス例: 成功
