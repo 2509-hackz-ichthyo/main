@@ -23,9 +23,9 @@ type JoinGameRequest struct {
 
 // MatchFoundResponse represents the response when a match is found
 type MatchFoundResponse struct {
-	Type     string `json:"type"`
-	RoomId   string `json:"roomId"`
-	Role     string `json:"role"`
+	Type       string `json:"type"`
+	RoomId     string `json:"roomId"`
+	Role       string `json:"role"`
 	OpponentId string `json:"opponentId"`
 }
 
@@ -38,7 +38,7 @@ type WaitingResponse struct {
 func handleMatchmaking(ctx context.Context, request events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Get connection ID from request context
 	connectionId := request.RequestContext.ConnectionID
-	
+
 	fmt.Printf("Matchmaking request from connection: %s\n", connectionId)
 
 	// Parse request body
@@ -64,9 +64,9 @@ func handleMatchmaking(ctx context.Context, request events.APIGatewayWebsocketPr
 
 	dynamo := dynamodb.New(sess)
 	apiGW := apigatewaymanagementapi.New(sess, &aws.Config{
-		Endpoint: aws.String(fmt.Sprintf("https://%s.execute-api.%s.amazonaws.com/%s", 
-			request.RequestContext.APIID, 
-			os.Getenv("AWS_REGION"), 
+		Endpoint: aws.String(fmt.Sprintf("https://%s.execute-api.%s.amazonaws.com/%s",
+			request.RequestContext.APIID,
+			os.Getenv("AWS_REGION"),
 			request.RequestContext.Stage)),
 	})
 
@@ -85,7 +85,7 @@ func handleMatchmaking(ctx context.Context, request events.APIGatewayWebsocketPr
 	if waitingPlayer != nil {
 		// Match found - create room and notify both players
 		roomId := generateRoomId()
-		
+
 		err = createGameRoom(dynamo, tableName, roomId, waitingPlayer.UserId, joinRequest.UserId, waitingPlayer.ConnectionId, connectionId)
 		if err != nil {
 			fmt.Printf("Error creating game room: %v\n", err)
@@ -169,7 +169,7 @@ func findWaitingPlayer(dynamo *dynamodb.DynamoDB, tableName string) (*WaitingPla
 	}
 
 	item := result.Items[0]
-	
+
 	// Parse the waiting player data
 	player := &WaitingPlayer{}
 	if userId, ok := item["userId"]; ok && userId.S != nil {
@@ -201,7 +201,7 @@ func findWaitingPlayer(dynamo *dynamodb.DynamoDB, tableName string) (*WaitingPla
 func addToWaitingQueue(dynamo *dynamodb.DynamoDB, tableName, userId, connectionId string) error {
 	now := time.Now()
 	timestamp := now.Unix()
-	
+
 	// Use timestamp#userId as sort key for ordering
 	sortKey := fmt.Sprintf("%d#%s", timestamp, userId)
 
@@ -228,15 +228,15 @@ func createGameRoom(dynamo *dynamodb.DynamoDB, tableName, roomId, player1Id, pla
 	roomInput := &dynamodb.PutItemInput{
 		TableName: aws.String(tableName),
 		Item: map[string]*dynamodb.AttributeValue{
-			"PK":           {S: aws.String(fmt.Sprintf("ROOM#%s", roomId))},
-			"SK":           {S: aws.String("METADATA")},
-			"roomId":       {S: aws.String(roomId)},
-			"status":       {S: aws.String("WAITING")},
-			"playerCount":  {N: aws.String("2")},
-			"player1Id":    {S: aws.String(player1Id)},
-			"player2Id":    {S: aws.String(player2Id)},
-			"createdAt":    {S: aws.String(now)},
-			"updatedAt":    {S: aws.String(now)},
+			"PK":          {S: aws.String(fmt.Sprintf("ROOM#%s", roomId))},
+			"SK":          {S: aws.String("METADATA")},
+			"roomId":      {S: aws.String(roomId)},
+			"status":      {S: aws.String("WAITING")},
+			"playerCount": {N: aws.String("2")},
+			"player1Id":   {S: aws.String(player1Id)},
+			"player2Id":   {S: aws.String(player2Id)},
+			"createdAt":   {S: aws.String(now)},
+			"updatedAt":   {S: aws.String(now)},
 		},
 	}
 
