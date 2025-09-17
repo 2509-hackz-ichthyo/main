@@ -57,3 +57,42 @@ docker run -p 3000:3000 2509-hackz-ichthyo
 - メインエントリ: `cmd/ws-decode-api`
 - ディレクトリ構成: `internal/domain` (ドメイン), `internal/app` (ユースケース), `internal/server/httpserver` (HTTP サーバー)
 - 依存する外部ミドルウェアはありません
+
+---
+
+# リクエスト・レスポンス
+
+## ヘルスチェック
+
+```
+curl -s http://localhost:3000/healthz
+```
+
+- レスポンス例: 成功
+  ```
+  {"status":"ok","timestamp":"2025-09-17T18:25:52.259651519Z"}
+  ```
+
+## Whitespace → 10 進数
+
+```
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
+-d '{"command_type":"WhitespaceToDecimal","payload":" \t\n"}'
+```
+
+- レスポンス例: 成功
+  ```
+  {"command_type":"WhitespaceToDecimal","result_kind":"DecimalSequence","result_decimals":[32,9,10],"decimal_string":"32 9 10"}
+  ```
+
+## Whitespace（パーセントエンコード） → 2 進数
+
+```
+curl -s -X POST http://localhost:3000/v1/decode -H 'Content-Type: application/json' \
+-d '{"command_type":"WhitespaceToBinary","payload":"%20%20%20%20%09%20%09%0A"}'
+```
+
+- レスポンス例: 成功
+  ```
+  {"command_type":"WhitespaceToBinary","result_kind":"BinarySequence","result_binaries":["0101"],"binary_string":"0101"}
+  ```
