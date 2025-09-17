@@ -1,26 +1,14 @@
 package domain
 
-import (
-	"errors"
-	"fmt"
-)
+import "errors"
 
 var (
-	ErrNonASCII           = errors.New("non-ascii character detected")
-	ErrUnknownCommandType = errors.New("unknown command type")
-	ErrInvalidPayload     = errors.New("invalid payload for command type")
+	// ErrInvalidCommandType は未サポートの命令種別が与えられた場合に返される。
+	ErrInvalidCommandType = errors.New("domain: invalid command type")
+
+	// ErrTypeMismatch はコンポーネントと命令種別が整合しない場合に返される。
+	ErrTypeMismatch = errors.New("domain: command type mismatch for component")
+
+	// ErrInvalidPayload はペイロードの構文または値が不正な場合に返される。
+	ErrInvalidPayload = errors.New("domain: invalid command payload")
 )
-
-// 非ASCIIバイトを検出した場合に使用するカスタムエラー型
-type ErrNonASCIIError struct {
-	Index int
-	Byte  byte
-}
-
-// エラーメッセージのフォーマットを定義
-func (e *ErrNonASCIIError) Error() string {
-	return fmt.Sprintf("out of range error at index %d: byte value %d", e.Index, e.Byte)
-}
-
-// errors.Is(err, ) を可能に
-func (e *ErrNonASCIIError) Unwrap() error { return ErrNonASCII }

@@ -1,55 +1,65 @@
 package domain
 
-import (
-	"fmt"
-)
+import "fmt"
 
-type Command struct {
-	Type    Type    // 命令の種類
-	Payload Payload // 変換の対象となるリテラル
-}
-
-// Type の定義
-type Type int
+// CommandType はドメイン層で扱う命令種別を表す。
+type CommandType string
 
 const (
-	CommandUnknown Type = iota
-	StringToASCII
-	ASCIIToString
+	// CommandTypeWhitespaceToDecimal は Whitespace 命令を 10 進数列に変換する種別を表す。
+	CommandTypeWhitespaceToDecimal CommandType = "WhitespaceToDecimal"
+
+	// CommandTypeWhitespaceToBinary は Whitespace 命令を 2 進数列に変換する種別を表す。
+	CommandTypeWhitespaceToBinary CommandType = "WhitespaceToBinary"
+
+	// CommandTypeDecimalToWhitespace は 10 進数列を Whitespace 命令に変換する種別を表す。
+	CommandTypeDecimalToWhitespace CommandType = "DecimalToWhitespace"
 )
 
-// Payload 定義
-type (
-	Payload       interface{ isPayload() } // isPayload() メソッドを持つ型という条件付与
-	StringPayload struct{ Text string }
-	ASCIIPayload  struct{ Bytes []byte } // ASCII 専用の生バイト列
-)
-
-// インターフェースの実装
-func (StringPayload) isPayload() {}
-func (ASCIIPayload) isPayload()  {}
-
-// 専用のコンストラクタ関数を作り、どちらのフィールドを用いるかをわかりやすくする
-// 関連: result.go の実装
-
-func NewStringCommand(t string) (Command, error) {
-	return Command{
-		Type:    StringToASCII,
-		Payload: StringPayload{Text: t},
-	}, nil
+var supportedCommandTypes = map[CommandType]struct{}{
+	CommandTypeWhitespaceToDecimal: {},
+	CommandTypeWhitespaceToBinary:  {},
+	CommandTypeDecimalToWhitespace: {},
 }
 
-func NewASCIICommand(bytes []byte) (Command, error) {
-	// ビジネスロジックとしてASCIIしか持たないのでここでバリデーション
-	for i, b := range bytes {
-		if b > 0x7F {
-			return Command{},
-				fmt.Errorf("validate ascii: %w", &ErrNonASCIIError{Index: i, Byte: b})
-		}
+// ParseCommandType は文字列を CommandType に変換し、未対応の値の場合はエラーを返す。
+func ParseCommandType(raw string) (CommandType, error) {
+	ct := CommandType(raw)
+	if err := validateCommandType(ct); err != nil {
+		return "", err
+	}
+	return ct, nil
+}
+
+// validateCommandType はサポート対象外の CommandType を検知してエラーを返す。
+func validateCommandType(ct CommandType) error {
+	if _, ok := supportedCommandTypes[ct]; !ok {
+		return fmt.Errorf("%w: %s", ErrInvalidCommandType, string(ct))
+	}
+	return nil
+}
+
+// Command は命令種別とペイロードを保持するドメインオブジェクト。
+type Command struct {
+	commandType CommandType
+	payload     string
+}
+
+// NewCommand は指定された種別が有効であることを確認したうえで Command を生成する。
+func NewCommand(commandType CommandType, payload string) (Command, error) {
+	if err := validateCommandType(commandType); err != nil {
+		return Command{}, err
 	}
 
-	return Command{
-		Type:    ASCIIToString,
-		Payload: ASCIIPayload{Bytes: bytes},
-	}, nil
+	return Command{commandType: commandType, payload: payload}, nil
+}
+
+// Type は命令種別を返す。
+func (c Command) Type() CommandType {
+	return c.commandType
+}
+
+// Payload はペイロード文字列を返す。
+func (c Command) Payload() string {
+	return c.payload
 }
