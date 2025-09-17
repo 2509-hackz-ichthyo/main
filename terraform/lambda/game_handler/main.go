@@ -44,14 +44,14 @@ type GameUpdateResponse struct {
 
 // PiecePlacedResponse represents the response when a piece is placed
 type PiecePlacedResponse struct {
-	Type       string `json:"type"`        // "piecePlaced"
-	UserId     string `json:"userId"`      // 配置したプレイヤー
+	Type       string `json:"type"`   // "piecePlaced"
+	UserId     string `json:"userId"` // 配置したプレイヤー
 	Row        int    `json:"row"`
 	Col        int    `json:"col"`
 	Color      int    `json:"color"`
-	NextPlayer string `json:"nextPlayer"`  // 次のターンのプレイヤー
-	NextColor  int    `json:"nextColor"`   // 次に配置する色
-	GamePhase  string `json:"gamePhase"`   // "PLAYING" or "FINISHED"
+	NextPlayer string `json:"nextPlayer"` // 次のターンのプレイヤー
+	NextColor  int    `json:"nextColor"`  // 次に配置する色
+	GamePhase  string `json:"gamePhase"`  // "PLAYING" or "FINISHED"
 	Winner     string `json:"winner,omitempty"`
 }
 

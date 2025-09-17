@@ -171,7 +171,7 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 
 	// 自分の手か相手の手かをチェック
 	isMyMove := (message.UserID == g.PlayerID)
-	
+
 	if isMyMove {
 		log.Printf("Confirmed my piece placement at (%d, %d) with color %d", x, y, color)
 	} else {
@@ -302,7 +302,7 @@ func (g *Game) Update() error {
 				log.Printf("Not your turn!")
 				return nil
 			}
-			
+
 			success := g.placePiece(boardX, boardY)
 			if success {
 				// オンラインモードでは、サーバーにコマ配置を通知
