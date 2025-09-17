@@ -333,6 +333,60 @@ resource "aws_lambda_permission" "matchmaking_handler" {
   source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/joinGame"
 }
 
+# Data source to create ZIP file for game Lambda
+data "archive_file" "lambda_game_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/game_handler"
+  output_path = "${path.module}/lambda/game_handler.zip"
+}
+
+# Lambda function for WebSocket game route
+resource "aws_lambda_function" "hackz_ichthyo_game_handler" {
+  filename         = data.archive_file.lambda_game_zip.output_path
+  function_name    = "hackz-ichthyo-websocket-game"
+  role            = aws_iam_role.lambda_websocket_role.arn
+  handler         = "bootstrap"
+  runtime         = "provided.al2"
+  timeout         = 30
+
+  source_code_hash = data.archive_file.lambda_game_zip.output_base64sha256
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.game_service.name
+    }
+  }
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
+# Lambda integration for game
+resource "aws_apigatewayv2_integration" "hackz_ichthyo_game_integration" {
+  api_id             = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+  integration_uri    = aws_lambda_function.hackz_ichthyo_game_handler.invoke_arn
+}
+
+# makeMove route
+resource "aws_apigatewayv2_route" "hackz_ichthyo_makemove" {
+  api_id    = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
+  route_key = "makeMove"
+  target    = "integrations/${aws_apigatewayv2_integration.hackz_ichthyo_game_integration.id}"
+}
+
+# permission for exec lambda (game)
+resource "aws_lambda_permission" "game_handler" {
+  statement_id  = "AllowGameExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.hackz_ichthyo_game_handler.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/makeMove"
+}
+
 # custom domain
 # certificate
 resource "aws_acm_certificate" "websocket_cert" {
