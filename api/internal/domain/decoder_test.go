@@ -149,13 +149,13 @@ func TestWhitespaceDecoderRejectsInvalidCharacter(t *testing.T) {
 	}
 }
 
-func TestWhitespaceDecoderRejectsTypeMismatch(t *testing.T) {
-	t.Parallel()
+func mustCommand(t *testing.T, commandType CommandType, payload string) Command {
+	t.Helper()
 
-	decoder := NewWhitespaceDecoder()
-	cmd := mustCommand(t, CommandTypeDecimalToWhitespace, "32")
-
-	if _, err := decoder.Execute(cmd); err != ErrTypeMismatch {
-		t.Fatalf("expected ErrTypeMismatch but got %v", err)
+	cmd, err := NewCommand(commandType, payload)
+	if err != nil {
+		t.Fatalf("unexpected error while building command: %v", err)
 	}
+
+	return cmd
 }

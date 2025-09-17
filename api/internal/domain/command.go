@@ -11,15 +11,11 @@ const (
 
 	// CommandTypeWhitespaceToBinary は Whitespace 命令を 2 進数列に変換する種別を表す。
 	CommandTypeWhitespaceToBinary CommandType = "WhitespaceToBinary"
-
-	// CommandTypeDecimalToWhitespace は 10 進数列を Whitespace 命令に変換する種別を表す。
-	CommandTypeDecimalToWhitespace CommandType = "DecimalToWhitespace"
 )
 
 var supportedCommandTypes = map[CommandType]struct{}{
 	CommandTypeWhitespaceToDecimal: {},
 	CommandTypeWhitespaceToBinary:  {},
-	CommandTypeDecimalToWhitespace: {},
 }
 
 // ParseCommandType は文字列を CommandType に変換し、未対応の値の場合はエラーを返す。

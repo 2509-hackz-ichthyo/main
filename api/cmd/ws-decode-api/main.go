@@ -11,8 +11,6 @@ import (
 
 	"github.com/2509-hackz-ichthyo/main/api/internal/config"
 	"github.com/2509-hackz-ichthyo/main/api/internal/domain"
-	"github.com/2509-hackz-ichthyo/main/api/internal/infrastructure/database"
-	"github.com/2509-hackz-ichthyo/main/api/internal/infrastructure/repository"
 	"github.com/2509-hackz-ichthyo/main/api/internal/interfaces/httpapi"
 	"github.com/2509-hackz-ichthyo/main/api/internal/usecases"
 )
@@ -26,25 +24,8 @@ func main() {
 		log.Fatalf("設定の読み込みに失敗しました: %v", err)
 	}
 
-	db, err := database.OpenSQLite(database.SQLiteConfig{
-		Path:            cfg.DatabasePath,
-		MaxOpenConns:    1,
-		MaxIdleConns:    1,
-		ConnMaxLifetime: 0,
-	})
-	if err != nil {
-		log.Fatalf("データベース接続に失敗しました: %v", err)
-	}
-	defer db.Close()
-
-	if err := database.EnsureSchema(ctx, db); err != nil {
-		log.Fatalf("スキーマの初期化に失敗しました: %v", err)
-	}
-
-	repo := repository.NewSQLiteCommandRepository(db)
 	decoder := domain.NewWhitespaceDecoder()
-	encoder := domain.NewWhitespaceEncoder()
-	usecase := usecases.NewCommandExecutor(repo, decoder, encoder)
+	usecase := usecases.NewDecoderService(decoder)
 	router := httpapi.NewRouter(usecase)
 
 	srv := &http.Server{

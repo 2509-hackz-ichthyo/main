@@ -13,7 +13,6 @@ func TestParseCommandType(t *testing.T) {
 	}{
 		{name: "WhitespaceToDecimal", input: string(CommandTypeWhitespaceToDecimal), want: CommandTypeWhitespaceToDecimal},
 		{name: "WhitespaceToBinary", input: string(CommandTypeWhitespaceToBinary), want: CommandTypeWhitespaceToBinary},
-		{name: "DecimalToWhitespace", input: string(CommandTypeDecimalToWhitespace), want: CommandTypeDecimalToWhitespace},
 		{name: "Invalid", input: "Unknown", wantErr: true},
 	}
 
@@ -44,16 +43,16 @@ func TestParseCommandType(t *testing.T) {
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(CommandTypeDecimalToWhitespace, "32 9 10")
+	cmd, err := NewCommand(CommandTypeWhitespaceToDecimal, " \t\n")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if cmd.Type() != CommandTypeDecimalToWhitespace {
+	if cmd.Type() != CommandTypeWhitespaceToDecimal {
 		t.Fatalf("unexpected command type: %v", cmd.Type())
 	}
 
-	if cmd.Payload() != "32 9 10" {
+	if cmd.Payload() != " \t\n" {
 		t.Fatalf("unexpected payload: %s", cmd.Payload())
 	}
 

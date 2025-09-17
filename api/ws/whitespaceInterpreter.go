@@ -1,4 +1,0 @@
-package websocket
-
-func run() {
-}

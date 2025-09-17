@@ -2,9 +2,7 @@ FROM golang:1.25.1-alpine AS builder
 
 WORKDIR /app
 
-ENV CGO_ENABLED=1
-
-RUN apk add --no-cache build-base
+ENV CGO_ENABLED=0
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -16,7 +14,7 @@ FROM alpine:3.20
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates sqlite-libs
+RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /usr/local/bin/ws-decode /usr/local/bin/ws-decode
 

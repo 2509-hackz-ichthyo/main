@@ -13,15 +13,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CommandUsecase はハンドラが利用するユースケースの最小インタフェース。
-type CommandUsecase interface {
-	ExecuteCommand(ctx context.Context, input usecases.ExecuteCommandInput) (usecases.ExecuteCommandOutput, error)
-	GetExecution(ctx context.Context, id string) (usecases.CommandExecution, error)
-	ListExecutions(ctx context.Context, limit int) ([]usecases.CommandExecution, error)
+// DecoderUsecase はハンドラが利用するユースケースの最小インタフェース。
+type DecoderUsecase interface {
+	Decode(ctx context.Context, input usecases.DecodeInput) (usecases.DecodeOutput, error)
 }
 
 // NewRouter は Gin の Engine を生成しルーティングを設定する。
-func NewRouter(commandUC CommandUsecase) *gin.Engine {
+func NewRouter(decoderUC DecoderUsecase) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
@@ -31,75 +29,32 @@ func NewRouter(commandUC CommandUsecase) *gin.Engine {
 
 	v1 := r.Group("/v1")
 	{
-		v1.POST("/commands", executeCommandHandler(commandUC))
-		v1.POST("/decode", executeCommandHandler(commandUC)) // 互換のためのエイリアス
-		v1.GET("/commands/:id", getExecutionHandler(commandUC))
-		v1.GET("/commands", listExecutionsHandler(commandUC))
+		v1.POST("/decode", decodeHandler(decoderUC))
 	}
 
 	return r
 }
 
-func executeCommandHandler(commandUC CommandUsecase) gin.HandlerFunc {
+func decodeHandler(decoderUC DecoderUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req executeCommandRequest
+		var req decodeRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			writeError(c, http.StatusBadRequest, "リクエストボディの形式が不正です", err)
 			return
 		}
 
-		input := usecases.ExecuteCommandInput{
+		input := usecases.DecodeInput{
 			CommandType: req.CommandType,
 			Payload:     req.Payload,
 		}
 
-		output, err := commandUC.ExecuteCommand(c.Request.Context(), input)
+		output, err := decoderUC.Decode(c.Request.Context(), input)
 		if err != nil {
 			handleUsecaseError(c, err)
 			return
 		}
 
-		c.JSON(http.StatusCreated, newExecuteCommandResponse(output))
-	}
-}
-
-func getExecutionHandler(commandUC CommandUsecase) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		result, err := commandUC.GetExecution(c.Request.Context(), id)
-		if err != nil {
-			handleUsecaseError(c, err)
-			return
-		}
-
-		c.JSON(http.StatusOK, newCommandExecutionResponse(result))
-	}
-}
-
-func listExecutionsHandler(commandUC CommandUsecase) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		limit := 0
-		if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
-			value, err := strconv.Atoi(rawLimit)
-			if err != nil {
-				writeError(c, http.StatusBadRequest, "limit は数値で指定してください", err)
-				return
-			}
-			limit = value
-		}
-
-		results, err := commandUC.ListExecutions(c.Request.Context(), limit)
-		if err != nil {
-			handleUsecaseError(c, err)
-			return
-		}
-
-		response := make([]commandExecutionResponse, len(results))
-		for i, res := range results {
-			response[i] = newCommandExecutionResponse(res)
-		}
-
-		c.JSON(http.StatusOK, response)
+		c.JSON(http.StatusOK, newDecodeResponse(output))
 	}
 }
 
@@ -107,8 +62,6 @@ func handleUsecaseError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, usecases.ErrValidationFailed):
 		writeError(c, http.StatusBadRequest, "入力値が不正です", err)
-	case errors.Is(err, usecases.ErrExecutionNotFound):
-		writeError(c, http.StatusNotFound, "指定された履歴が見つかりません", err)
 	case errors.Is(err, domain.ErrInvalidPayload):
 		writeError(c, http.StatusBadRequest, "ペイロードが不正です", err)
 	case errors.Is(err, domain.ErrInvalidCommandType):
@@ -127,56 +80,43 @@ func writeError(c *gin.Context, status int, message string, err error) {
 	})
 }
 
-// executeCommandRequest は POST /v1/commands のリクエストボディ。
-type executeCommandRequest struct {
+// decodeRequest は POST /v1/decode のリクエストボディ。
+type decodeRequest struct {
 	CommandType string `json:"command_type"`
 	Payload     string `json:"payload"`
 }
 
-// executeCommandResponse はコマンド実行直後のレスポンスボディ。
-type executeCommandResponse struct {
-	ID             string    `json:"id"`
-	CommandType    string    `json:"command_type"`
-	ResultKind     string    `json:"result_kind"`
-	ResultText     *string   `json:"result_text,omitempty"`
-	ResultDecimals []int     `json:"result_decimals,omitempty"`
-	ResultBinaries []string  `json:"result_binaries,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
+// decodeResponse はデコード結果のレスポンスボディ。
+type decodeResponse struct {
+	CommandType    string   `json:"command_type"`
+	ResultKind     string   `json:"result_kind"`
+	ResultDecimals []int    `json:"result_decimals,omitempty"`
+	ResultBinaries []string `json:"result_binaries,omitempty"`
+	DecimalString  *string  `json:"decimal_string,omitempty"`
+	BinaryString   *string  `json:"binary_string,omitempty"`
 }
 
-func newExecuteCommandResponse(output usecases.ExecuteCommandOutput) executeCommandResponse {
-	return executeCommandResponse{
-		ID:             output.ID,
+func newDecodeResponse(output usecases.DecodeOutput) decodeResponse {
+	resp := decodeResponse{
 		CommandType:    string(output.CommandType),
 		ResultKind:     string(output.ResultKind),
-		ResultText:     output.ResultText,
 		ResultDecimals: output.ResultDecimals,
 		ResultBinaries: output.ResultBinaries,
-		CreatedAt:      output.CreatedAt,
 	}
-}
 
-// commandExecutionResponse は履歴取得時のレスポンス。
-type commandExecutionResponse struct {
-	ID             string    `json:"id"`
-	CommandType    string    `json:"command_type"`
-	Payload        string    `json:"payload"`
-	ResultKind     string    `json:"result_kind"`
-	ResultText     *string   `json:"result_text,omitempty"`
-	ResultDecimals []int     `json:"result_decimals,omitempty"`
-	ResultBinaries []string  `json:"result_binaries,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-}
-
-func newCommandExecutionResponse(execution usecases.CommandExecution) commandExecutionResponse {
-	return commandExecutionResponse{
-		ID:             execution.ID,
-		CommandType:    string(execution.CommandType),
-		Payload:        execution.Payload,
-		ResultKind:     string(execution.ResultKind),
-		ResultText:     execution.ResultText,
-		ResultDecimals: execution.ResultDecimals,
-		ResultBinaries: execution.ResultBinaries,
-		CreatedAt:      execution.CreatedAt,
+	if len(output.ResultDecimals) > 0 {
+		tokens := make([]string, len(output.ResultDecimals))
+		for i, value := range output.ResultDecimals {
+			tokens[i] = strconv.Itoa(value)
+		}
+		joined := strings.Join(tokens, " ")
+		resp.DecimalString = &joined
 	}
+
+	if len(output.ResultBinaries) > 0 {
+		joined := strings.Join(output.ResultBinaries, " ")
+		resp.BinaryString = &joined
+	}
+
+	return resp
 }
