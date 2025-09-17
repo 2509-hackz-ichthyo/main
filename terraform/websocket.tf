@@ -223,3 +223,37 @@ resource "aws_lambda_permission" "disconnect_handler" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/$disconnect"
 }
+
+# custom domain
+# certificate
+resource "aws_acm_certificate" "websocket_cert" {
+  domain_name       = "2509-hackz-ichthyo.ulxsth.com"
+  validation_method = "DNS"
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+  
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+    Domain      = "2509-hackz-ichthyo.ulxsth.com"
+  }
+}
+
+# ACM証明書ARNの出力
+output "acm_certificate_arn" {
+  description = "ACM証明書のARN"
+  value       = aws_acm_certificate.websocket_cert.arn
+}
+
+output "acm_dns_validation_info" {
+  description = "ACM証明書のDNS検証レコード情報（Cloudflareに設定が必要）"
+  value = {
+    for dvo in aws_acm_certificate.websocket_cert.domain_validation_options : dvo.domain_name => {
+      validation_name   = dvo.resource_record_name
+      validation_value  = dvo.resource_record_value
+      validation_type   = dvo.resource_record_type
+    }
+  }
+}
