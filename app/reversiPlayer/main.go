@@ -10,6 +10,7 @@ import (
 
 type Game struct{}
 
+
 const (
 	BoardSize   = 8
 	CellSize    = 60
@@ -51,6 +52,24 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func main() {
+	// パーサーのテスト
+	gameData, err := parseGameData(mockPlayData)
+	if err != nil {
+		log.Printf("パーサーエラー: %v", err)
+	} else {
+		log.Printf("対局データを正常に解析しました。手数: %d", gameData.GetMoveCount())
+		
+		// 最初の5手を表示
+		for i := 0; i < 5 && i < gameData.GetMoveCount(); i++ {
+			move, _ := gameData.GetMove(i)
+			log.Printf("手%d: row=%d, col=%d, color=%d", i+1, move.Row, move.Col, move.Color)
+		}
+		
+		// 色の範囲を表示
+		minColor, maxColor := gameData.GetColorRange()
+		log.Printf("色の範囲: %d - %d", minColor, maxColor)
+	}
+
 	ebiten.SetWindowSize(800, 600)
 	ebiten.SetWindowTitle("Hello, World!")
 	if err := ebiten.RunGame(&Game{}); err != nil {
