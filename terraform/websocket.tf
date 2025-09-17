@@ -384,13 +384,29 @@ resource "aws_apigatewayv2_route" "hackz_ichthyo_makemove" {
   target    = "integrations/${aws_apigatewayv2_integration.hackz_ichthyo_game_integration.id}"
 }
 
-# permission for exec lambda (game)
-resource "aws_lambda_permission" "game_handler" {
+# gameFinished route
+resource "aws_apigatewayv2_route" "hackz_ichthyo_gamefinished" {
+  api_id    = aws_apigatewayv2_api.hackz_ichthyo_websocket.id
+  route_key = "gameFinished"
+  target    = "integrations/${aws_apigatewayv2_integration.hackz_ichthyo_game_integration.id}"
+}
+
+# permission for exec lambda (game - makeMove)
+resource "aws_lambda_permission" "game_handler_makemove" {
   statement_id  = "AllowGameExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.hackz_ichthyo_game_handler.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/makeMove"
+}
+
+# permission for exec lambda (game - gameFinished)
+resource "aws_lambda_permission" "game_handler_gamefinished" {
+  statement_id  = "AllowGameFinishExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.hackz_ichthyo_game_handler.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.hackz_ichthyo_websocket.id}/*/gameFinished"
 }
 
 # custom domain

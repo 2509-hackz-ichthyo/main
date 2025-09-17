@@ -26,6 +26,14 @@ type MakeMoveRequest struct {
 	Color  int    `json:"color"`
 }
 
+// GameFinishedRequest represents the request body for gameFinished
+type GameFinishedRequest struct {
+	Action string `json:"action"`
+	UserId string `json:"userId"`
+	RoomId string `json:"roomId"`
+	Winner string `json:"winner"`
+}
+
 // GameState represents the current game state (simplified - no board state)
 type GameState struct {
 	RoomId        string `json:"roomId"`
@@ -73,7 +81,32 @@ type Player struct {
 
 func handleGameMove(ctx context.Context, request events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	connectionId := request.RequestContext.ConnectionID
-	fmt.Printf("Game move request from connection: %s\n", connectionId)
+	fmt.Printf("Game request from connection: %s\n", connectionId)
+
+	// First parse to get action
+	var actionRequest struct {
+		Action string `json:"action"`
+	}
+	if err := json.Unmarshal([]byte(request.Body), &actionRequest); err != nil {
+		fmt.Printf("Error parsing request body for action: %v\n", err)
+		return events.APIGatewayProxyResponse{StatusCode: 400}, err
+	}
+
+	// Route based on action
+	switch actionRequest.Action {
+	case "makeMove":
+		return handleMakeMove(ctx, request)
+	case "gameFinished":
+		return handleGameFinished(ctx, request)
+	default:
+		fmt.Printf("Unknown action: %s\n", actionRequest.Action)
+		return events.APIGatewayProxyResponse{StatusCode: 400}, fmt.Errorf("unknown action: %s", actionRequest.Action)
+	}
+}
+
+func handleMakeMove(ctx context.Context, request events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	connectionId := request.RequestContext.ConnectionID
+	fmt.Printf("Make move request from connection: %s\n", connectionId)
 
 	// Parse request body
 	var moveRequest MakeMoveRequest
@@ -144,12 +177,12 @@ func handleGameMove(ctx context.Context, request events.APIGatewayWebsocketProxy
 		nextPlayer = room.Player1Id
 	}
 
-	// Check if game is finished (simple check - after 60 moves, board is likely full)
+	// Check if game is finished (64 moves = full board)
 	gamePhase := "PLAYING"
 	winner := ""
-	if currentGameState.TurnNumber >= 60 {
+	if currentGameState.TurnNumber >= 64 {
 		gamePhase = "FINISHED"
-		// Winner will be determined by clients when they report final board states
+		fmt.Printf("Game finished due to full board (64 moves)")
 	}
 
 	// Generate next color (0-255)
@@ -199,6 +232,77 @@ func handleGameMove(ctx context.Context, request events.APIGatewayWebsocketProxy
 		}
 	}
 
+	return events.APIGatewayProxyResponse{StatusCode: 200}, nil
+}
+
+func handleGameFinished(ctx context.Context, request events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	connectionId := request.RequestContext.ConnectionID
+	fmt.Printf("Game finished notification from connection: %s\n", connectionId)
+
+	// Parse request body
+	var finishRequest GameFinishedRequest
+	if err := json.Unmarshal([]byte(request.Body), &finishRequest); err != nil {
+		fmt.Printf("Error parsing request body: %v\n", err)
+		return events.APIGatewayProxyResponse{StatusCode: 400}, err
+	}
+
+	// Validate required fields
+	if finishRequest.UserId == "" || finishRequest.RoomId == "" {
+		fmt.Printf("UserId and RoomId are required\n")
+		return events.APIGatewayProxyResponse{StatusCode: 400}, fmt.Errorf("userId and roomId are required")
+	}
+
+	// Initialize AWS session
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(os.Getenv("AWS_REGION")),
+	})
+	if err != nil {
+		fmt.Printf("Error creating AWS session: %v\n", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500}, err
+	}
+
+	dynamo := dynamodb.New(sess)
+	apiGW := apigatewaymanagementapi.New(sess, &aws.Config{
+		Endpoint: aws.String(fmt.Sprintf("https://%s.execute-api.%s.amazonaws.com/%s",
+			request.RequestContext.APIID,
+			os.Getenv("AWS_REGION"),
+			request.RequestContext.Stage)),
+	})
+
+	tableName := os.Getenv("DYNAMODB_TABLE_NAME")
+	if tableName == "" {
+		tableName = "game-service"
+	}
+
+	// Update room status to FINISHED
+	err = updateRoomStatus(dynamo, tableName, finishRequest.RoomId, "FINISHED")
+	if err != nil {
+		fmt.Printf("Error updating room status: %v\n", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500}, err
+	}
+
+	// Get players for broadcast
+	players, err := getRoomPlayers(dynamo, tableName, finishRequest.RoomId)
+	if err != nil {
+		fmt.Printf("Error getting room players: %v\n", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500}, err
+	}
+
+	// Broadcast game finished event to all players
+	response := map[string]interface{}{
+		"type":   "gameFinished",
+		"roomId": finishRequest.RoomId,
+		"winner": finishRequest.Winner,
+	}
+
+	for _, player := range players {
+		err = sendMessage(apiGW, player.ConnectionId, response)
+		if err != nil {
+			fmt.Printf("Error sending message to player %s: %v\n", player.UserId, err)
+		}
+	}
+
+	fmt.Printf("Game finished: Room %s, Winner: %s\n", finishRequest.RoomId, finishRequest.Winner)
 	return events.APIGatewayProxyResponse{StatusCode: 200}, nil
 }
 
@@ -403,6 +507,30 @@ func sendMessage(apiGW *apigatewaymanagementapi.ApiGatewayManagementApi, connect
 	}
 
 	_, err = apiGW.PostToConnection(input)
+	return err
+}
+
+func updateRoomStatus(dynamo *dynamodb.DynamoDB, tableName, roomId, status string) error {
+	now := time.Now().Format(time.RFC3339)
+
+	// Update room metadata status
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String(fmt.Sprintf("ROOM#%s", roomId))},
+			"SK": {S: aws.String("METADATA")},
+		},
+		UpdateExpression: aws.String("SET #status = :status, updatedAt = :updatedAt"),
+		ExpressionAttributeNames: map[string]*string{
+			"#status": aws.String("status"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":status":    {S: aws.String(status)},
+			":updatedAt": {S: aws.String(now)},
+		},
+	}
+
+	_, err := dynamo.UpdateItem(input)
 	return err
 }
 

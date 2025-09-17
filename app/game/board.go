@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 )
 
 // NewBoard は初期設定済みの新しいボードを作成する
@@ -121,10 +122,20 @@ func (g *Game) placePiece(x, y int) bool {
 	// 注意: WebSocket送信は呼び出し元（game.go）で管理
 	// ここでは盤面処理のみを行う
 
-	// ローカルゲーム終了判定（オンライン時はサーバーが管理）
-	if !g.IsOnline && g.isBoardFull() {
+	// 盤面満杯の終了判定（オンライン・オフライン共通）
+	if g.isBoardFull() {
 		g.GameOver = true
 		g.calculateWinner()
+
+		// オンラインモードの場合は、サーバーに終了を通知
+		if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
+			err := g.WSConnection.FinishGame(g.PlayerID, g.RoomID, g.Winner)
+			if err != nil {
+				log.Printf("Failed to send game finish notification: %v", err)
+			} else {
+				log.Printf("Game finished! Winner: %s - sent to server", g.Winner)
+			}
+		}
 	} else if !g.IsOnline {
 		// ローカルモードでのみターンを切り替え
 		g.switchTurn()

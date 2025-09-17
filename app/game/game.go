@@ -176,11 +176,19 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 		log.Printf("Confirmed my piece placement at (%d, %d) with color %d", x, y, color)
 	} else {
 		log.Printf("Processing opponent's piece placement at (%d, %d) with color %d", x, y, color)
-		// 相手の手の場合、同じplacePieceロジックを適用
-		g.NextColor = color
-		success := g.placePiece(x, y)
-		if !success {
-			log.Printf("Failed to apply opponent's move - board state may be inconsistent")
+		// 相手の手の場合、サーバーで検証済みなので直接配置
+		if x >= 0 && x < BoardSize && y >= 0 && y < BoardSize {
+			g.Board.Squares[x][y].Piece = &Piece{Color: color}
+			log.Printf("Applied opponent's move successfully at (%d, %d)", x, y)
+			
+			// 相手の手を適用後、終了判定を実行
+			if g.isBoardFull() {
+				g.GameOver = true
+				g.calculateWinner()
+				log.Printf("Game ended after opponent's move! Winner: %s", g.Winner)
+			}
+		} else {
+			log.Printf("Invalid coordinates for opponent's move: (%d, %d)", x, y)
 		}
 	}
 
@@ -201,6 +209,10 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 			} else {
 				log.Printf("Opponent won!")
 			}
+		} else {
+			// 勝者が指定されていない場合は、自分で計算
+			g.calculateWinner()
+			log.Printf("Game finished, calculated winner: %s", g.Winner)
 		}
 	}
 }
@@ -303,15 +315,25 @@ func (g *Game) Update() error {
 				return nil
 			}
 
-			success := g.placePiece(boardX, boardY)
-			if success {
-				// オンラインモードでは、サーバーにコマ配置を通知
-				if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
-					err := g.WSConnection.MakeMove(g.PlayerID, g.RoomID, boardX, boardY, g.NextColor)
-					if err != nil {
-						log.Printf("Failed to send move to server: %v", err)
-					}
+			// まず、ローカルでバリデーション（無効な手は早期リターン）
+			if !g.isValidMove(boardX, boardY) {
+				log.Printf("Invalid move at (%d, %d)", boardX, boardY)
+				return nil
+			}
+
+			// 有効な手の場合、サーバーに送信してからローカル処理
+			if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
+				err := g.WSConnection.MakeMove(g.PlayerID, g.RoomID, boardX, boardY, g.NextColor)
+				if err != nil {
+					log.Printf("Failed to send move to server: %v", err)
+					return nil
 				}
+			}
+
+			// サーバー送信成功後、ローカルで盤面処理（ゲーム終了判定を含む）
+			success := g.placePiece(boardX, boardY)
+			if !success {
+				log.Printf("Failed to place piece at (%d, %d) - unexpected error", boardX, boardY)
 			}
 		}
 	}

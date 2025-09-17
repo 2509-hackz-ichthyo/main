@@ -193,6 +193,17 @@ func (ws *WSConnection) MakeMove(userID, roomID string, x, y int, color uint8) e
 	return ws.SendMessage(message)
 }
 
+// ゲーム終了を通知
+func (ws *WSConnection) FinishGame(userID, roomID, winner string) error {
+	message := WSMessage{
+		Action: "gameFinished", // 新しいroute_key
+		UserID: userID,
+		RoomID: roomID,
+		Winner: winner,
+	}
+	return ws.SendMessage(message)
+}
+
 // 接続を閉じる
 func (ws *WSConnection) Close() {
 	if ws.websocket.IsUndefined() {
