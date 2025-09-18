@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2025-09-18T00:00:00.000Z" agent="draw.io" etag="example" version="21.6.5">
+  <diagram name="AWS Architecture" id="aws-architecture">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- AWS Cloud Container -->
+        <mxCell id="aws-cloud" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#FF6600;fillColor=#F8F8F8;gradientColor=none;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1320" height="900" as="geometry" />
+        </mxCell>
+        
+        <!-- AWS Cloud Label -->
+        <mxCell id="aws-label" value="AWS Cloud" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Region Container -->
+        <mxCell id="region" value="" style="fillColor=none;strokeColor=#FF9900;dashed=1;verticalAlign=top;fontStyle=0;fontColor=#FF9900;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="100" width="1240" height="800" as="geometry" />
+        </mxCell>
+        
+        <!-- Region Label -->
+        <mxCell id="region-label" value="ap-northeast-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontColor=#FF9900;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="110" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- VPC Container -->
+        <mxCell id="vpc" value="" style="fillColor=none;strokeColor=#248814;dashed=1;verticalAlign=top;fontStyle=0;fontColor=#248814;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="160" width="520" height="580" as="geometry" />
+        </mxCell>
+        
+        <!-- VPC Label -->
+        <mxCell id="vpc-label" value="VPC (10.0.0.0/16)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontColor=#248814;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="130" y="170" width="140" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Availability Zone Container -->
+        <mxCell id="az" value="" style="fillColor=none;strokeColor=#147EBA;dashed=1;verticalAlign=top;fontStyle=0;fontColor=#147EBA;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="160" y="210" width="440" height="450" as="geometry" />
+        </mxCell>
+        
+        <!-- AZ Label -->
+        <mxCell id="az-label" value="ap-northeast-1a" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontColor=#147EBA;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="170" y="220" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Public Subnet -->
+        <mxCell id="subnet" value="" style="fillColor=none;strokeColor=#7AA116;dashed=1;verticalAlign=top;fontStyle=0;fontColor=#7AA116;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="260" width="360" height="380" as="geometry" />
+        </mxCell>
+        
+        <!-- Subnet Label -->
+        <mxCell id="subnet-label" value="Public Subnet (10.0.1.0/24)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontColor=#7AA116;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="210" y="270" width="180" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Internet Gateway -->
+        <mxCell id="igw" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.internet_gateway;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="340" y="60" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- IGW Label -->
+        <mxCell id="igw-label" value="Internet Gateway" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="310" y="130" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Network Load Balancer -->
+        <mxCell id="nlb" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.network_load_balancer;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="240" y="320" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- NLB Label -->
+        <mxCell id="nlb-label" value="Network Load Balancer&#xa;(Static IP: 18.181.38.132)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="190" y="390" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Target Group -->
+        <mxCell id="tg" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.target_group;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="350" y="320" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- TG Label -->
+        <mxCell id="tg-label" value="Target Group" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="330" y="390" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ECS Cluster -->
+        <mxCell id="ecs-cluster" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.ecs;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="460" y="320" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- ECS Cluster Label -->
+        <mxCell id="ecs-cluster-label" value="ECS Cluster&#xa;(Fargate)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="440" y="390" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ECR Repository -->
+        <mxCell id="ecr" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.ecr_registry;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="240" y="500" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- ECR Label -->
+        <mxCell id="ecr-label" value="ECR Repository" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="210" y="570" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- CloudWatch Logs -->
+        <mxCell id="cloudwatch" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.cloudwatch_2;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="460" y="500" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- CloudWatch Label -->
+        <mxCell id="cloudwatch-label" value="CloudWatch Logs" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="430" y="570" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Bucket -->
+        <mxCell id="s3" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.s3;fillColor=#7AA116;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="700" y="200" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- S3 Label -->
+        <mxCell id="s3-label" value="S3 Bucket&#xa;(Static Assets)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="680" y="270" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- CloudFront -->
+        <mxCell id="cloudfront" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.cloudfront;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="850" y="200" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- CloudFront Label -->
+        <mxCell id="cloudfront-label" value="CloudFront&#xa;Distribution" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="830" y="270" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway WebSocket -->
+        <mxCell id="api-gateway-ws" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.api_gateway;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="700" y="340" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- API Gateway WS Label -->
+        <mxCell id="api-gateway-ws-label" value="API Gateway&#xa;WebSocket" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="680" y="410" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway REST -->
+        <mxCell id="api-gateway-rest" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.api_gateway;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="850" y="340" width="60" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- API Gateway REST Label -->
+        <mxCell id="api-gateway-rest-label" value="API Gateway&#xa;REST (Replay)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="830" y="410" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Lambda Functions -->
+        <!-- WebSocket Connect -->
+        <mxCell id="lambda-connect" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.lambda_function;fillColor=#FF9900;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="700" y="500" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-connect-label" value="Connect" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="685" y="560" width="80" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- WebSocket Disconnect -->
+        <mxCell id="lambda-disconnect" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.lambda_function;fillColor=#FF9900;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="780" y="500" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-disconnect-label" value="Disconnect" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="765" y="560" width="80" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- WebSocket Matchmaking -->
+        <mxCell id="lambda-matchmaking" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.lambda_function;fillColor=#FF9900;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="860" y="500" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-matchmaking-label" value="Matchmaking" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="845" y="560" width="80" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- WebSocket Game -->
+        <mxCell id="lambda-game" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.lambda_function;fillColor=#FF9900;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="940" y="500" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-game-label" value="Game Handler" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="925" y="560" width="80" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- Game Replay -->
+        <mxCell id="lambda-replay" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.lambda_function;fillColor=#FF9900;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="500" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-replay-label" value="Replay Handler" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1005" y="560" width="80" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- Cleanup Handler -->
+        <mxCell id="lambda-cleanup" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.lambda_function;fillColor=#FF9900;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="500" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-cleanup-label" value="Cleanup" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="560" width="80" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- DynamoDB Tables -->
+        <!-- WebSocket Connections -->
+        <mxCell id="dynamodb-ws" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.dynamodb;fillColor=#7AA116;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="700" y="620" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dynamodb-ws-label" value="WebSocket&#xa;Connections" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="680" y="690" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Game Service -->
+        <mxCell id="dynamodb-game" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.dynamodb;fillColor=#7AA116;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="850" y="620" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dynamodb-game-label" value="Game Service&#xa;(Single Table)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="830" y="690" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Game Archive -->
+        <mxCell id="dynamodb-archive" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.dynamodb;fillColor=#7AA116;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="620" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dynamodb-archive-label" value="Game Archive&#xa;(TTL Enabled)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="980" y="690" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- EventBridge -->
+        <mxCell id="eventbridge" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.eventbridge;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="340" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="eventbridge-label" value="EventBridge&#xa;(5min Schedule)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="410" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ACM Certificate -->
+        <mxCell id="acm" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.certificate_manager_3;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="200" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="acm-label" value="ACM Certificate&#xa;(Custom Domain)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="980" y="270" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- IAM Roles -->
+        <mxCell id="iam-ecs" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.iam_role;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="350" y="500" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iam-ecs-label" value="ECS Task&#xa;Execution Role" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="320" y="550" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="iam-lambda" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.iam_role;fillColor=#F58536;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="620" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iam-lambda-label" value="Lambda&#xa;Roles" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="670" width="80" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Users -->
+        <mxCell id="users" value="" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws4.users;fillColor=#232F3E;gradientColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="60" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="users-label" value="Users" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="980" y="130" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Connection Arrows -->
+        <!-- Internet Gateway connections -->
+        <mxCell id="arrow-igw-nlb" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="igw" target="nlb">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="200" as="sourcePoint" />
+            <mxPoint x="450" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- NLB to Target Group -->
+        <mxCell id="arrow-nlb-tg" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="nlb" target="tg">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="300" as="sourcePoint" />
+            <mxPoint x="350" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Target Group to ECS -->
+        <mxCell id="arrow-tg-ecs" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="tg" target="ecs-cluster">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="300" as="sourcePoint" />
+            <mxPoint x="450" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ECS to ECR -->
+        <mxCell id="arrow-ecs-ecr" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="ecs-cluster" target="ecr">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ECS to CloudWatch -->
+        <mxCell id="arrow-ecs-cw" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="ecs-cluster" target="cloudwatch">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- S3 to CloudFront -->
+        <mxCell id="arrow-s3-cf" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="s3" target="cloudfront">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="200" as="sourcePoint" />
+            <mxPoint x="650" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Users to CloudFront -->
+        <mxCell id="arrow-users-cf" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="users" target="cloudfront">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="900" y="150" as="sourcePoint" />
+            <mxPoint x="950" y="100" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Users to API Gateway WebSocket -->
+        <mxCell id="arrow-users-ws" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="users" target="api-gateway-ws">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="900" y="200" as="sourcePoint" />
+            <mxPoint x="950" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- API Gateway WebSocket to Lambda Functions -->
+        <mxCell id="arrow-ws-connect" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="api-gateway-ws" target="lambda-connect">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="650" y="400" as="sourcePoint" />
+            <mxPoint x="700" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-ws-disconnect" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="api-gateway-ws" target="lambda-disconnect">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="450" as="sourcePoint" />
+            <mxPoint x="750" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-ws-matchmaking" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="api-gateway-ws" target="lambda-matchmaking">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="780" y="400" as="sourcePoint" />
+            <mxPoint x="830" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-ws-game" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="api-gateway-ws" target="lambda-game">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="780" y="400" as="sourcePoint" />
+            <mxPoint x="830" y="350" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="800" y="370" />
+              <mxPoint x="920" y="450" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- API Gateway REST to Lambda Replay -->
+        <mxCell id="arrow-rest-replay" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="api-gateway-rest" target="lambda-replay">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="900" y="450" as="sourcePoint" />
+            <mxPoint x="950" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- EventBridge to Cleanup Lambda -->
+        <mxCell id="arrow-eb-cleanup" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="eventbridge" target="lambda-cleanup">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1050" y="450" as="sourcePoint" />
+            <mxPoint x="1100" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Lambda Functions to DynamoDB -->
+        <mxCell id="arrow-connect-db" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="lambda-connect" target="dynamodb-ws">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="650" y="600" as="sourcePoint" />
+            <mxPoint x="700" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-disconnect-db" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="lambda-disconnect" target="dynamodb-ws">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="600" as="sourcePoint" />
+            <mxPoint x="750" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-matchmaking-game-db" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="lambda-matchmaking" target="dynamodb-game">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="800" y="600" as="sourcePoint" />
+            <mxPoint x="850" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-game-game-db" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="lambda-game" target="dynamodb-game">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="900" y="600" as="sourcePoint" />
+            <mxPoint x="950" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-replay-archive-db" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="lambda-replay" target="dynamodb-archive">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="950" y="600" as="sourcePoint" />
+            <mxPoint x="1000" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-cleanup-game-db" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="lambda-cleanup" target="dynamodb-game">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1050" y="600" as="sourcePoint" />
+            <mxPoint x="1100" y="550" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1050" y="600" />
+              <mxPoint x="950" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-cleanup-ws-db" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="lambda-cleanup" target="dynamodb-ws">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1050" y="650" as="sourcePoint" />
+            <mxPoint x="1100" y="600" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1050" y="650" />
+              <mxPoint x="800" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- IAM Role connections (dashed lines) -->
+        <mxCell id="arrow-iam-ecs" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="iam-ecs" target="ecs-cluster">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="450" as="sourcePoint" />
+            <mxPoint x="450" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-iam-lambda" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="iam-lambda" target="lambda-cleanup">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1100" y="600" as="sourcePoint" />
+            <mxPoint x="1150" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ACM to API Gateway (dashed line) -->
+        <mxCell id="arrow-acm-ws" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;" edge="1" parent="1" source="acm" target="api-gateway-ws">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="950" y="300" as="sourcePoint" />
+            <mxPoint x="800" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Text Annotations -->
+        <mxCell id="note-websocket" value="WebSocket API Endpoints:&#xa;• $connect, $disconnect&#xa;• joinGame, makeMove&#xa;• gameFinished" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="690" y="750" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note-nlb" value="Static IP:&#xa;18.181.38.132:3000&#xa;(Decode API)" style="text;html=1;strokeColor=#d79b00;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="750" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note-custom-domain" value="Custom Domain:&#xa;2509-hackz-ichthyo.ulxsth.com&#xa;(WebSocket with SSL/TLS)" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="950" y="750" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note-cleanup" value="Cleanup Handler:&#xa;Runs every 5 minutes&#xa;via EventBridge" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="750" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note-cloudfront" value="CloudFront URL:&#xa;d3g7mz0xj2ilb4.cloudfront.net" style="text;html=1;strokeColor=#666666;fillColor=#f5f5f5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="820" y="130" width="160" height="40" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

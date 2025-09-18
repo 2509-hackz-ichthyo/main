@@ -7,8 +7,6 @@ import (
 )
 
 func TestWhitespaceUsecaseWhitespaceToBinary(t *testing.T) {
-	t.Parallel()
-
 	usecase := NewWhitespaceUsecase()
 
 	sentence := "   \t \t\t\n    \t\t \n   \t\t \t  \t \n"
@@ -32,8 +30,6 @@ func TestWhitespaceUsecaseWhitespaceToBinary(t *testing.T) {
 }
 
 func TestWhitespaceUsecaseWhitespaceToDecimal(t *testing.T) {
-	t.Parallel()
-
 	usecase := NewWhitespaceUsecase()
 
 	sentences := []string{
@@ -63,8 +59,6 @@ func TestWhitespaceUsecaseWhitespaceToDecimal(t *testing.T) {
 }
 
 func TestWhitespaceUsecaseDecimalToWhitespace(t *testing.T) {
-	t.Parallel()
-
 	usecase := NewWhitespaceUsecase()
 
 	command := WhitespaceCommand{
@@ -93,8 +87,6 @@ func TestWhitespaceUsecaseDecimalToWhitespace(t *testing.T) {
 }
 
 func TestWhitespaceUsecaseBinaryToWhitespace(t *testing.T) {
-	t.Parallel()
-
 	usecase := NewWhitespaceUsecase()
 
 	command := WhitespaceCommand{
@@ -117,8 +109,6 @@ func TestWhitespaceUsecaseBinaryToWhitespace(t *testing.T) {
 }
 
 func TestWhitespaceUsecaseValidation(t *testing.T) {
-	t.Parallel()
-
 	usecase := NewWhitespaceUsecase()
 
 	_, err := usecase.Execute(context.Background(), WhitespaceCommand{})

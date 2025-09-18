@@ -16,6 +16,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var (
+	parseCommandTypeFn = domain.ParseCommandType
+	pathUnescapeFn     = url.PathUnescape
+)
+
 // WhitespaceUsecase はハンドラが依存する最小限のインタフェースを表す。
 // ユースケース層の実装は Execute メソッドのみを公開すれば良い。
 type WhitespaceUsecase interface {
@@ -169,7 +174,7 @@ func newDecodeResponse(result app.WhitespaceResult) decodeResponse {
 }
 
 func normalizePayload(commandType string, values []string) ([]string, error) {
-	ct, err := domain.ParseCommandType(commandType)
+	ct, err := parseCommandTypeFn(commandType)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +183,7 @@ func normalizePayload(commandType string, values []string) ([]string, error) {
 	for i, value := range values {
 		switch ct {
 		case domain.CommandTypeWhitespaceToBinary, domain.CommandTypeWhitespaceToDecimal:
-			decoded, err := url.PathUnescape(value)
+			decoded, err := pathUnescapeFn(value)
 			if err != nil {
 				return nil, fmt.Errorf("%w: failed to decode percent-encoded payload", domain.ErrInvalidPayload)
 			}

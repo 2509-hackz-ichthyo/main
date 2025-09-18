@@ -30,6 +30,18 @@ type WhitespaceResult struct {
 // WhitespaceUsecase は入力を検証し、各種フォーマット間の変換を担う。
 type WhitespaceUsecase struct{}
 
+var (
+	parseCommandTypeFunc        = domain.ParseCommandType
+	parseWhitespaceSentenceFunc = parseWhitespaceSentence
+	decimalStringToBinaryFunc   = decimalStringToBinary
+	normalizeBinaryStringFunc   = normalizeBinaryString
+	bitsToWhitespaceFunc        = bitsToWhitespace
+)
+
+var (
+	extractSegmentsFunc = extractSegments
+)
+
 // NewWhitespaceUsecase は WhitespaceUsecase を生成する。
 func NewWhitespaceUsecase() *WhitespaceUsecase {
 	return &WhitespaceUsecase{}
@@ -44,7 +56,7 @@ func (u *WhitespaceUsecase) Execute(_ context.Context, command WhitespaceCommand
 		return WhitespaceResult{}, fmt.Errorf("%w: payload must not be blank", ErrValidationFailed)
 	}
 
-	commandType, err := domain.ParseCommandType(command.CommandType)
+	commandType, err := parseCommandTypeFunc(command.CommandType)
 	if err != nil {
 		return WhitespaceResult{}, err
 	}
@@ -66,7 +78,7 @@ func (u *WhitespaceUsecase) Execute(_ context.Context, command WhitespaceCommand
 func (WhitespaceUsecase) whitespaceToBinary(payload []string) (WhitespaceResult, error) {
 	binaries := make([]string, len(payload))
 	for i, sentence := range payload {
-		parsed, err := parseWhitespaceSentence(sentence)
+		parsed, err := parseWhitespaceSentenceFunc(sentence)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
@@ -83,7 +95,7 @@ func (WhitespaceUsecase) whitespaceToBinary(payload []string) (WhitespaceResult,
 func (WhitespaceUsecase) whitespaceToDecimal(payload []string) (WhitespaceResult, error) {
 	decimals := make([]string, len(payload))
 	for i, sentence := range payload {
-		parsed, err := parseWhitespaceSentence(sentence)
+		parsed, err := parseWhitespaceSentenceFunc(sentence)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
@@ -101,12 +113,12 @@ func (WhitespaceUsecase) decimalToWhitespace(payload []string) (WhitespaceResult
 	whitespaces := make([]string, len(payload))
 	encoded := make([]string, len(payload))
 	for i, decimal := range payload {
-		binary, err := decimalStringToBinary(decimal)
+		binary, err := decimalStringToBinaryFunc(decimal)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
 
-		whitespace, err := bitsToWhitespace(binary)
+		whitespace, err := bitsToWhitespaceFunc(binary)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
@@ -127,12 +139,12 @@ func (WhitespaceUsecase) binaryToWhitespace(payload []string) (WhitespaceResult,
 	whitespaces := make([]string, len(payload))
 	encoded := make([]string, len(payload))
 	for i, binary := range payload {
-		clean, err := normalizeBinaryString(binary)
+		clean, err := normalizeBinaryStringFunc(binary)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
 
-		whitespace, err := bitsToWhitespace(clean)
+		whitespace, err := bitsToWhitespaceFunc(clean)
 		if err != nil {
 			return WhitespaceResult{}, err
 		}
@@ -154,7 +166,7 @@ type binarySentence struct {
 }
 
 func parseWhitespaceSentence(sentence string) (binarySentence, error) {
-	segments, err := extractSegments(sentence)
+	segments, err := extractSegmentsFunc(sentence)
 	if err != nil {
 		return binarySentence{}, err
 	}
