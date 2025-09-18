@@ -183,3 +183,172 @@ resource "aws_cloudwatch_log_group" "hackz_ichthyo_log_group" {
   name              = "/ecs/hackz-ichthyo-ecs"
   retention_in_days = 30
 }
+
+# REST API Gateway for game replay functionality
+resource "aws_api_gateway_rest_api" "game_replay_api" {
+  name        = "game-replay-api"
+  description = "REST API for accessing archived game data for replay functionality"
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
+}
+
+# API Gateway Resource: /replay
+resource "aws_api_gateway_resource" "replay_resource" {
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  parent_id   = aws_api_gateway_rest_api.game_replay_api.root_resource_id
+  path_part   = "replay"
+}
+
+# API Gateway Resource: /replay/random
+resource "aws_api_gateway_resource" "replay_random_resource" {
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  parent_id   = aws_api_gateway_resource.replay_resource.id
+  path_part   = "random"
+}
+
+# API Gateway Method: GET /replay/random
+resource "aws_api_gateway_method" "replay_random_get" {
+  rest_api_id   = aws_api_gateway_rest_api.game_replay_api.id
+  resource_id   = aws_api_gateway_resource.replay_random_resource.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# API Gateway Method: OPTIONS /replay/random (for CORS)
+resource "aws_api_gateway_method" "replay_random_options" {
+  rest_api_id   = aws_api_gateway_rest_api.game_replay_api.id
+  resource_id   = aws_api_gateway_resource.replay_random_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+# API Gateway Integration: GET /replay/random
+resource "aws_api_gateway_integration" "replay_random_get_integration" {
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  resource_id = aws_api_gateway_resource.replay_random_resource.id
+  http_method = aws_api_gateway_method.replay_random_get.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.game_replay_handler.invoke_arn
+}
+
+# API Gateway Integration: OPTIONS /replay/random (for CORS)
+resource "aws_api_gateway_integration" "replay_random_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  resource_id = aws_api_gateway_resource.replay_random_resource.id
+  http_method = aws_api_gateway_method.replay_random_options.http_method
+
+  type                 = "MOCK"
+  passthrough_behavior = "WHEN_NO_MATCH"
+
+  request_templates = {
+    "application/json" = jsonencode({
+      statusCode = 200
+    })
+  }
+}
+
+# API Gateway Method Response: GET /replay/random
+resource "aws_api_gateway_method_response" "replay_random_get_response" {
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  resource_id = aws_api_gateway_resource.replay_random_resource.id
+  http_method = aws_api_gateway_method.replay_random_get.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+}
+
+# API Gateway Method Response: OPTIONS /replay/random
+resource "aws_api_gateway_method_response" "replay_random_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  resource_id = aws_api_gateway_resource.replay_random_resource.id
+  http_method = aws_api_gateway_method.replay_random_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+}
+
+# API Gateway Integration Response: GET /replay/random
+resource "aws_api_gateway_integration_response" "replay_random_get_integration_response" {
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  resource_id = aws_api_gateway_resource.replay_random_resource.id
+  http_method = aws_api_gateway_method.replay_random_get.http_method
+  status_code = aws_api_gateway_method_response.replay_random_get_response.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+  }
+
+  depends_on = [aws_api_gateway_integration.replay_random_get_integration]
+}
+
+# API Gateway Integration Response: OPTIONS /replay/random
+resource "aws_api_gateway_integration_response" "replay_random_options_integration_response" {
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  resource_id = aws_api_gateway_resource.replay_random_resource.id
+  http_method = aws_api_gateway_method.replay_random_options.http_method
+  status_code = aws_api_gateway_method_response.replay_random_options_response.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+  }
+
+  depends_on = [aws_api_gateway_integration.replay_random_options_integration]
+}
+
+# API Gateway Deployment
+resource "aws_api_gateway_deployment" "game_replay_api_deployment" {
+  depends_on = [
+    aws_api_gateway_integration.replay_random_get_integration,
+    aws_api_gateway_integration.replay_random_options_integration
+  ]
+
+  rest_api_id = aws_api_gateway_rest_api.game_replay_api.id
+  stage_name  = "prod"
+
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.replay_resource.id,
+      aws_api_gateway_resource.replay_random_resource.id,
+      aws_api_gateway_method.replay_random_get.id,
+      aws_api_gateway_method.replay_random_options.id,
+      aws_api_gateway_integration.replay_random_get_integration.id,
+      aws_api_gateway_integration.replay_random_options_integration.id,
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Lambda Permission for API Gateway
+resource "aws_lambda_permission" "game_replay_api_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.game_replay_handler.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_api_gateway_rest_api.game_replay_api.execution_arn}/*/*"
+}
+
+# Output the API Gateway URL
+output "game_replay_api_url" {
+  description = "URL for the game replay REST API"
+  value       = "${aws_api_gateway_deployment.game_replay_api_deployment.invoke_url}/replay/random"
+}

@@ -131,7 +131,8 @@ resource "aws_iam_role_policy" "lambda_websocket_policy" {
         Effect = "Allow"
         Action = [
           "dynamodb:PutItem",
-          "dynamodb:GetItem"
+          "dynamodb:GetItem",
+          "dynamodb:Scan"
         ]
         Resource = [
           aws_dynamodb_table.game_archive.arn,
@@ -641,6 +642,38 @@ resource "aws_dynamodb_table" "game_archive" {
   ttl {
     attribute_name = "ttl"
     enabled        = true
+  }
+
+  tags = {
+    Environment = "hackathon"
+    Project     = "ichthyo-reversi"
+  }
+}
+
+# Data source to create ZIP file for game replay handler Lambda
+data "archive_file" "game_replay_handler_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/game_replay_handler"
+  output_path = "${path.module}/lambda/game_replay_handler.zip"
+  excludes    = ["*.zip", "go.sum"]
+}
+
+# Lambda Function for Game Replay Handler
+resource "aws_lambda_function" "game_replay_handler" {
+  filename         = data.archive_file.game_replay_handler_zip.output_path
+  function_name    = "game_replay_handler"
+  role            = aws_iam_role.lambda_websocket_role.arn
+  handler         = "bootstrap"
+  runtime         = "provided.al2"
+  timeout         = 30
+
+  source_code_hash = data.archive_file.game_replay_handler_zip.output_base64sha256
+
+  environment {
+    variables = {
+      GAME_SERVICE_TABLE  = aws_dynamodb_table.game_service.name
+      GAME_ARCHIVE_TABLE  = aws_dynamodb_table.game_archive.name
+    }
   }
 
   tags = {

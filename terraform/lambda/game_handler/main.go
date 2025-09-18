@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"strconv"
 	"time"
+	"math/rand"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -203,8 +203,8 @@ func handleMakeMove(ctx context.Context, request events.APIGatewayWebsocketProxy
 		Winner:        winner,
 	}
 
-	// Save new game state to DynamoDB
-	err = saveGameState(dynamo, tableName, newGameState)
+	// Save new game state to DynamoDB with move details
+	err = saveGameStateWithMove(dynamo, tableName, newGameState, moveRequest.Row, moveRequest.Col, thisTurnColor)
 	if err != nil {
 		fmt.Printf("Error saving game state: %v\n", err)
 		return events.APIGatewayProxyResponse{StatusCode: 500}, err
@@ -511,6 +511,38 @@ func saveGameState(dynamo *dynamodb.DynamoDB, tableName string, gameState GameSt
 	return err
 }
 
+func saveGameStateWithMove(dynamo *dynamodb.DynamoDB, tableName string, gameState GameState, moveRow, moveCol, moveColor int) error {
+	now := time.Now().Format(time.RFC3339)
+
+	// Game state with move details
+	item := map[string]*dynamodb.AttributeValue{
+		"PK":            {S: aws.String(fmt.Sprintf("ROOM#%s", gameState.RoomId))},
+		"SK":            {S: aws.String(fmt.Sprintf("TURN#%06d", gameState.TurnNumber))},
+		"roomId":        {S: aws.String(gameState.RoomId)},
+		"turnNumber":    {N: aws.String(strconv.Itoa(gameState.TurnNumber))},
+		"currentPlayer": {S: aws.String(gameState.CurrentPlayer)},
+		"nextColor":     {N: aws.String(strconv.Itoa(gameState.NextColor))},
+		"gamePhase":     {S: aws.String(gameState.GamePhase)},
+		"createdAt":     {S: aws.String(now)},
+		// Move details
+		"moveRow":   {N: aws.String(strconv.Itoa(moveRow))},
+		"moveCol":   {N: aws.String(strconv.Itoa(moveCol))},
+		"moveColor": {N: aws.String(strconv.Itoa(moveColor))},
+	}
+
+	if gameState.Winner != "" {
+		item["winner"] = &dynamodb.AttributeValue{S: aws.String(gameState.Winner)}
+	}
+
+	input := &dynamodb.PutItemInput{
+		TableName: aws.String(tableName),
+		Item:      item,
+	}
+
+	_, err := dynamo.PutItem(input)
+	return err
+}
+
 func sendMessage(apiGW *apigatewaymanagementapi.ApiGatewayManagementApi, connectionId string, message interface{}) error {
 	data, err := json.Marshal(message)
 	if err != nil {
@@ -557,9 +589,11 @@ func archiveGameData(dynamo *dynamodb.DynamoDB, gameFinished GameFinishedRequest
 		return fmt.Errorf("failed to get room data: %v", err)
 	}
 
-	// Create simple game data - for now we'll create a placeholder
-	// In a real implementation, you would collect the actual move history
-	gameDataText := "0 0 0\n1 1 1\n2 2 2" // Placeholder game data
+	// Collect actual game move history
+	gameDataText, err := collectGameMoveHistory(dynamo, gameFinished.RoomId)
+	if err != nil {
+		return fmt.Errorf("failed to collect game move history: %v", err)
+	}
 
 	// Create archive entry
 	archiveTableName := "game-archive"
@@ -625,6 +659,50 @@ func getRoomData(dynamo *dynamodb.DynamoDB, roomId string) (*GameRoom, error) {
 	}
 
 	return room, nil
+}
+
+func collectGameMoveHistory(dynamo *dynamodb.DynamoDB, roomId string) (string, error) {
+	// Query all turn records for this room to collect move history
+	queryInput := &dynamodb.QueryInput{
+		TableName:              aws.String(os.Getenv("DYNAMODB_TABLE_NAME")),
+		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :sk)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {S: aws.String(fmt.Sprintf("ROOM#%s", roomId))},
+			":sk": {S: aws.String("TURN#")},
+		},
+		ScanIndexForward: aws.Bool(true), // Ascending order (chronological)
+	}
+
+	result, err := dynamo.Query(queryInput)
+	if err != nil {
+		return "", fmt.Errorf("failed to query game turns: %v", err)
+	}
+
+	var gameDataLines []string
+	for _, item := range result.Items {
+		// Extract move details from each turn
+		if moveRow, ok := item["moveRow"]; ok && moveRow.N != nil {
+			if moveCol, ok := item["moveCol"]; ok && moveCol.N != nil {
+				if moveColor, ok := item["moveColor"]; ok && moveColor.N != nil {
+					// Format: "row col color"
+					line := fmt.Sprintf("%s %s %s", *moveRow.N, *moveCol.N, *moveColor.N)
+					gameDataLines = append(gameDataLines, line)
+				}
+			}
+		}
+	}
+
+	// Join all moves with newlines
+	if len(gameDataLines) == 0 {
+		return "0 0 0", nil // Fallback for empty games
+	}
+	
+	gameDataText := fmt.Sprintf("%s\n", gameDataLines[0])
+	for i := 1; i < len(gameDataLines); i++ {
+		gameDataText += fmt.Sprintf("%s\n", gameDataLines[i])
+	}
+	
+	return gameDataText, nil
 }
 
 func main() {
