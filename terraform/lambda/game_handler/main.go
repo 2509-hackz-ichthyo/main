@@ -625,14 +625,12 @@ func archiveGameData(dynamo *dynamodb.DynamoDB, gameFinished GameFinishedRequest
 	}
 
 	// Convert game data to whitespace format
+	fmt.Printf("Original game data text: %q\n", gameDataText)
 	whitespaceData, err := convertToWhitespace(gameDataText)
 	if err != nil {
-		fmt.Printf("Warning: Failed to convert to whitespace format: %v\n", err)
-		// エラーの場合は元のテキストを保存（後方互換性のため）
-		whitespaceData = gameDataText
-	} else {
-		fmt.Printf("Successfully converted game data to whitespace format\n")
+		return fmt.Errorf("failed to convert to whitespace format: %v", err)
 	}
+	fmt.Printf("Successfully converted game data to whitespace format\n")
 
 	// Create archive entry
 	archiveTableName := "game-archive"
@@ -778,16 +776,19 @@ func convertToWhitespace(gameDataText string) (string, error) {
 	if apiURL == "" {
 		return "", fmt.Errorf("WHITESPACE_API_URL not set")
 	}
+	fmt.Printf("Using API URL: %s\n", apiURL)
 
 	reqBody := WhitespaceConvertRequest{
 		CommandType: "DecimalToWhitespace",
 		Payload:     []string{gameDataText},
 	}
+	fmt.Printf("Request body: %+v\n", reqBody)
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal request: %v", err)
 	}
+	fmt.Printf("JSON request data: %s\n", string(jsonData))
 
 	resp, err := http.Post(apiURL+"/v1/decode", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -795,19 +796,24 @@ func convertToWhitespace(gameDataText string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	fmt.Printf("Response status code: %d\n", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API returned status code: %d", resp.StatusCode)
+		// レスポンスボディを読んでエラー内容を確認
+		bodyBytes, _ := resp.Body.Read(make([]byte, 1024))
+		return "", fmt.Errorf("API returned status code: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var apiResp WhitespaceConvertResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return "", fmt.Errorf("failed to decode response: %v", err)
 	}
+	fmt.Printf("API response: %+v\n", apiResp)
 
 	if len(apiResp.ResultWhitespace) == 0 {
-		return "", fmt.Errorf("empty whitespace result")
+		return "", fmt.Errorf("empty whitespace result, full response: %+v", apiResp)
 	}
 
+	fmt.Printf("Converted whitespace data: %q\n", apiResp.ResultWhitespace[0])
 	return apiResp.ResultWhitespace[0], nil
 }
 
