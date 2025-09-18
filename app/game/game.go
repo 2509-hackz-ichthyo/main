@@ -504,3 +504,26 @@ func (g *Game) autoPlaceRandomPiece() bool {
 	}
 	return success
 }
+
+// convertToGameData は GameRecord を WebSocket送信用の GameData に変換する
+func (g *Game) convertToGameData() *GameData {
+	if g.GameRecord == nil {
+		return nil
+	}
+
+	moves := make([]MoveData, len(g.GameRecord.Moves))
+	for i, move := range g.GameRecord.Moves {
+		moves[i] = MoveData{
+			Row:   move.Row,
+			Col:   move.Col,
+			Color: move.Color,
+		}
+	}
+
+	return &GameData{
+		GameID:    g.GameRecord.GameID,
+		StartTime: g.GameRecord.StartTime,
+		EndTime:   g.GameRecord.EndTime,
+		Moves:     moves,
+	}
+}

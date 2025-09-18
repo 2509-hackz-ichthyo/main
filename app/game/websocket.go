@@ -40,6 +40,24 @@ type WSMessage struct {
 	NextColor  int    `json:"nextColor,omitempty"`  // 次に配置する色
 	GamePhase  string `json:"gamePhase,omitempty"`  // "PLAYING" or "FINISHED"
 	Winner     string `json:"winner,omitempty"`     // 勝者
+	
+	// 対局データ送信用フィールド
+	GameData   *GameData `json:"gameData,omitempty"` // 対局データ
+}
+
+// GameData は対局データをWebSocket送信用に変換した構造体
+type GameData struct {
+	GameID    string     `json:"gameId"`
+	StartTime string     `json:"startTime"`
+	EndTime   string     `json:"endTime"`
+	Moves     []MoveData `json:"moves"`
+}
+
+// MoveData は1手の情報をWebSocket送信用に変換した構造体
+type MoveData struct {
+	Row   int   `json:"row"`
+	Col   int   `json:"col"`
+	Color uint8 `json:"color"`
 }
 
 // WebSocket接続状態
@@ -201,6 +219,39 @@ func (ws *WSConnection) FinishGame(userID, roomID, winner string) error {
 		RoomID: roomID,
 		Winner: winner,
 	}
+	return ws.SendMessage(message)
+}
+
+// ゲーム終了を対局データと共に通知
+func (ws *WSConnection) FinishGameWithData(userID, roomID, winner string, gameRecord *GameRecord) error {
+	message := WSMessage{
+		Action: "gameFinished",
+		UserID: userID,
+		RoomID: roomID,
+		Winner: winner,
+	}
+	
+	// GameRecordが存在する場合はGameDataに変換して送信
+	if gameRecord != nil {
+		moves := make([]MoveData, len(gameRecord.Moves))
+		for i, move := range gameRecord.Moves {
+			moves[i] = MoveData{
+				Row:   move.Row,
+				Col:   move.Col,
+				Color: move.Color,
+			}
+		}
+		
+		message.GameData = &GameData{
+			GameID:    gameRecord.GameID,
+			StartTime: gameRecord.StartTime,
+			EndTime:   gameRecord.EndTime,
+			Moves:     moves,
+		}
+		
+		log.Printf("Sending game data with %d moves to server", len(moves))
+	}
+	
 	return ws.SendMessage(message)
 }
 

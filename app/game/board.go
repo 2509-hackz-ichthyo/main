@@ -134,13 +134,13 @@ func (g *Game) placePiece(x, y int) bool {
 		// 対局記録を完了
 		g.finishGameRecord()
 
-		// オンラインモードの場合は、サーバーに終了を通知
+		// オンラインモードの場合は、サーバーに終了と対局データを送信
 		if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
-			err := g.WSConnection.FinishGame(g.PlayerID, g.RoomID, g.Winner)
+			err := g.WSConnection.FinishGameWithData(g.PlayerID, g.RoomID, g.Winner, g.GameRecord)
 			if err != nil {
-				log.Printf("Failed to send game finish notification: %v", err)
+				log.Printf("Failed to send game finish with data: %v", err)
 			} else {
-				log.Printf("Game finished! Winner: %s - sent to server", g.Winner)
+				log.Printf("Game finished with data sent to server! Winner: %s", g.Winner)
 			}
 		}
 	} else if !g.IsOnline {

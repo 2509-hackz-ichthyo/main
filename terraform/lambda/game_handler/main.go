@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 	"math/rand"
 
@@ -29,10 +30,26 @@ type MakeMoveRequest struct {
 
 // GameFinishedRequest represents the request body for gameFinished
 type GameFinishedRequest struct {
-	Action string `json:"action"`
-	UserId string `json:"userId"`
-	RoomId string `json:"roomId"`
-	Winner string `json:"winner"`
+	Action   string    `json:"action"`
+	UserId   string    `json:"userId"`
+	RoomId   string    `json:"roomId"`
+	Winner   string    `json:"winner"`
+	GameData *GameData `json:"gameData,omitempty"` // クライアントから送信される対局データ
+}
+
+// GameData はクライアントから送信される対局データ
+type GameData struct {
+	GameID    string     `json:"gameId"`
+	StartTime string     `json:"startTime"`
+	EndTime   string     `json:"endTime"`
+	Moves     []MoveData `json:"moves"`
+}
+
+// MoveData は1手の情報
+type MoveData struct {
+	Row   int   `json:"row"`
+	Col   int   `json:"col"`
+	Color uint8 `json:"color"`
 }
 
 // GameState represents the current game state (simplified - no board state)
@@ -589,10 +606,20 @@ func archiveGameData(dynamo *dynamodb.DynamoDB, gameFinished GameFinishedRequest
 		return fmt.Errorf("failed to get room data: %v", err)
 	}
 
-	// Collect actual game move history
-	gameDataText, err := collectGameMoveHistory(dynamo, gameFinished.RoomId)
-	if err != nil {
-		return fmt.Errorf("failed to collect game move history: %v", err)
+	var gameDataText string
+
+	// Use client-provided game data if available
+	if gameFinished.GameData != nil && len(gameFinished.GameData.Moves) > 0 {
+		fmt.Printf("Using client-provided game data with %d moves\n", len(gameFinished.GameData.Moves))
+		gameDataText = convertGameDataToText(*gameFinished.GameData)
+	} else {
+		// Fallback to server-side move history collection
+		fmt.Printf("Falling back to server-side move history collection\n")
+		var err error
+		gameDataText, err = collectGameMoveHistory(dynamo, gameFinished.RoomId)
+		if err != nil {
+			return fmt.Errorf("failed to collect game move history: %v", err)
+		}
 	}
 
 	// Create archive entry
@@ -703,6 +730,21 @@ func collectGameMoveHistory(dynamo *dynamodb.DynamoDB, roomId string) (string, e
 	}
 	
 	return gameDataText, nil
+}
+
+// convertGameDataToText はクライアントから送信されたGameDataをテキスト形式に変換する
+func convertGameDataToText(gameData GameData) string {
+	if len(gameData.Moves) == 0 {
+		return "0 0 0\n"
+	}
+
+	var lines []string
+	for _, move := range gameData.Moves {
+		line := fmt.Sprintf("%d %d %d", move.Row, move.Col, move.Color)
+		lines = append(lines, line)
+	}
+
+	return fmt.Sprintf("%s\n", strings.Join(lines, "\n"))
 }
 
 func main() {
