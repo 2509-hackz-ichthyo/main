@@ -45,6 +45,7 @@ type GameData struct {
 	StartTime string     `json:"startTime"`
 	EndTime   string     `json:"endTime"`
 	Moves     []MoveData `json:"moves"`
+	GameText  string     `json:"gameText,omitempty"` // クライアントから送信されるテキスト形式データ
 }
 
 // MoveData は1手の情報
@@ -610,12 +611,16 @@ func archiveGameData(dynamo *dynamodb.DynamoDB, gameFinished GameFinishedRequest
 
 	var gameDataText string
 
-	// Use client-provided game data if available
-	if gameFinished.GameData != nil && len(gameFinished.GameData.Moves) > 0 {
+	// Use client-provided game text if available (最優先)
+	if gameFinished.GameData != nil && gameFinished.GameData.GameText != "" {
+		fmt.Printf("Using client-provided game text data: %q\n", gameFinished.GameData.GameText)
+		gameDataText = gameFinished.GameData.GameText
+	} else if gameFinished.GameData != nil && len(gameFinished.GameData.Moves) > 0 {
+		// フォールバック1: Movesデータから変換
 		fmt.Printf("Using client-provided game data with %d moves\n", len(gameFinished.GameData.Moves))
 		gameDataText = convertGameDataToText(*gameFinished.GameData)
 	} else {
-		// Fallback to server-side move history collection
+		// フォールバック2: サーバー側履歴収集
 		fmt.Printf("Falling back to server-side move history collection\n")
 		var err error
 		gameDataText, err = collectGameMoveHistory(dynamo, gameFinished.RoomId)
@@ -772,15 +777,13 @@ type WhitespaceConvertResponse struct {
 
 // convertToWhitespace は対局データテキストをWhitespace形式に変換する
 func convertToWhitespace(gameDataText string) (string, error) {
-	apiURL := os.Getenv("WHITESPACE_API_URL")
-	if apiURL == "" {
-		return "", fmt.Errorf("WHITESPACE_API_URL not set")
-	}
-	fmt.Printf("Using API URL: %s\n", apiURL)
+	// 固定IPアドレスを使用（ECS Fargateへのアクセス）
+	apiURL := "http://18.181.38.132:3000"
+	fmt.Printf("Using fixed IP API URL: %s\n", apiURL)
 
-	reqBody := WhitespaceConvertRequest{
-		CommandType: "DecimalToWhitespace",
-		Payload:     []string{gameDataText},
+	// Decode APIの新しいリクエスト形式に合わせて修正
+	reqBody := map[string]string{
+		"whitespace": gameDataText,
 	}
 	fmt.Printf("Request body: %+v\n", reqBody)
 
@@ -792,29 +795,32 @@ func convertToWhitespace(gameDataText string) (string, error) {
 
 	resp, err := http.Post(apiURL+"/v1/decode", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", fmt.Errorf("failed to call API: %v", err)
+		return "", fmt.Errorf("failed to call decode API: %v", err)
 	}
 	defer resp.Body.Close()
 
 	fmt.Printf("Response status code: %d\n", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
 		// レスポンスボディを読んでエラー内容を確認
-		bodyBytes, _ := resp.Body.Read(make([]byte, 1024))
-		return "", fmt.Errorf("API returned status code: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		bodyBytes := make([]byte, 1024)
+		n, _ := resp.Body.Read(bodyBytes)
+		return "", fmt.Errorf("decode API returned status code: %d, body: %s", resp.StatusCode, string(bodyBytes[:n]))
 	}
 
-	var apiResp WhitespaceConvertResponse
+	// Decode APIレスポンス形式に合わせて解析
+	var apiResp map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return "", fmt.Errorf("failed to decode response: %v", err)
 	}
-	fmt.Printf("API response: %+v\n", apiResp)
+	fmt.Printf("Decode API response: %+v\n", apiResp)
 
-	if len(apiResp.ResultWhitespace) == 0 {
-		return "", fmt.Errorf("empty whitespace result, full response: %+v", apiResp)
+	// レスポンスから結果を取得
+	if result, ok := apiResp["result"].(string); ok && result != "" {
+		fmt.Printf("Converted whitespace data: %q\n", result)
+		return result, nil
 	}
 
-	fmt.Printf("Converted whitespace data: %q\n", apiResp.ResultWhitespace[0])
-	return apiResp.ResultWhitespace[0], nil
+	return "", fmt.Errorf("empty or invalid decode result, full response: %+v", apiResp)
 }
 
 func main() {

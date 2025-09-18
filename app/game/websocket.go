@@ -50,7 +50,8 @@ type GameData struct {
 	GameID    string     `json:"gameId"`
 	StartTime string     `json:"startTime"`
 	EndTime   string     `json:"endTime"`
-	Moves     []MoveData `json:"moves"`
+	Moves     []MoveData `json:"moves"`     // 既存フィールド（互換性用）
+	GameText  string     `json:"gameText"`  // 新フィールド：テキスト形式
 }
 
 // MoveData は1手の情報をWebSocket送信用に変換した構造体
@@ -250,6 +251,33 @@ func (ws *WSConnection) FinishGameWithData(userID, roomID, winner string, gameRe
 		}
 
 		log.Printf("Sending game data with %d moves to server", len(moves))
+	}
+
+	return ws.SendMessage(message)
+}
+
+// ゲーム終了を対局データ（テキスト形式）と共に通知
+func (ws *WSConnection) FinishGameWithTextData(userID, roomID, winner string, gameRecord *GameRecord) error {
+	message := WSMessage{
+		Action: "gameFinished",
+		UserID: userID,
+		RoomID: roomID,
+		Winner: winner,
+	}
+
+	// GameRecordが存在する場合はテキスト形式に変換して送信
+	if gameRecord != nil {
+		// テキスト形式に変換
+		gameText := gameRecord.convertMovesToText()
+
+		message.GameData = &GameData{
+			GameID:    gameRecord.GameID,
+			StartTime: gameRecord.StartTime,
+			EndTime:   gameRecord.EndTime,
+			GameText:  gameText, // テキスト形式フィールド
+		}
+
+		log.Printf("Sending game text data: %s", gameText)
 	}
 
 	return ws.SendMessage(message)

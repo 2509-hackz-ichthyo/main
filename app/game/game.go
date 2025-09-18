@@ -211,11 +211,11 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 		// オンラインモードの場合は、サーバーに終了と対局データを送信
 		log.Printf("g.IsOnline: %v, g.State: %v, g.WSConnection: %v", g.IsOnline, g.State, g.WSConnection)
 		if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
-			err := g.WSConnection.FinishGameWithData(g.PlayerID, g.RoomID, g.Winner, g.GameRecord)
+			err := g.WSConnection.FinishGameWithTextData(g.PlayerID, g.RoomID, g.Winner, g.GameRecord)
 			if err != nil {
-				log.Printf("Failed to send game finish with data: %v", err)
+				log.Printf("Failed to send game finish with text data: %v", err)
 			} else {
-				log.Printf("Game finished with data sent to server! Winner: %s", g.Winner)
+				log.Printf("Game finished with text data sent to server! Winner: %s", g.Winner)
 			}
 		} else {
 			log.Printf("Not sending game data - conditions not met")

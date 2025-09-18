@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
@@ -110,4 +112,14 @@ type GameRecord struct {
 	Moves     []GameMove // 全ての手の記録
 	GameMode  string     // ゲームモード("online"/"offline")
 	TurnCount int        // 総ターン数
+}
+
+// convertMovesToText は GameRecord.Moves をテキスト形式に変換
+func (gr *GameRecord) convertMovesToText() string {
+	var lines []string
+	for _, move := range gr.Moves {
+		line := fmt.Sprintf("%d %d %d", move.Row, move.Col, move.Color)
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, "\n")
 }
