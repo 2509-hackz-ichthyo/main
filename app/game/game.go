@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -26,8 +27,11 @@ func NewGame() *Game {
 		WSConnection: NewWebSocketConnection(),
 	}
 
-    // 最初の手の色はサーバ authoritative に変更: ここでは生成しない
-    // g.NextColor はサーバからの最初のメッセージ (matchFound / gameUpdate / piecePlaced) で設定される想定
+	// 対局記録の初期化
+	game.initializeGameRecord()
+
+	// 最初の手の色はサーバ authoritative に変更: ここでは生成しない
+	// g.NextColor はサーバからの最初のメッセージ (matchFound / gameUpdate / piecePlaced) で設定される想定
 
 	// フォントを初期化
 	if err := game.initializeFont(); err != nil {
@@ -392,4 +396,83 @@ func (g *Game) calculateWinner() {
 	} else {
 		g.Winner = "白"
 	}
+}
+
+// initializeGameRecord は対局記録を初期化する
+func (g *Game) initializeGameRecord() {
+	now := time.Now().Format(time.RFC3339)
+	gameID := fmt.Sprintf("game_%d", time.Now().UnixNano())
+
+	gameMode := "online"
+	if !g.IsOnline {
+		gameMode = "offline"
+	}
+
+	player2ID := "opponent" // オンライン時は後で更新
+	if !g.IsOnline {
+		player2ID = "CPU"
+	}
+
+	g.GameRecord = &GameRecord{
+		GameID:    gameID,
+		Player1ID: g.PlayerID,
+		Player2ID: player2ID,
+		StartTime: now,
+		EndTime:   "",
+		Winner:    "",
+		Moves:     make([]GameMove, 0),
+		GameMode:  gameMode,
+		TurnCount: 0,
+	}
+
+	log.Printf("Game record initialized: GameID=%s, Mode=%s", gameID, gameMode)
+}
+
+// recordMove は1手の記録を追加する
+func (g *Game) recordMove(row, col int, color uint8) {
+	if g.GameRecord == nil {
+		return
+	}
+
+	g.GameRecord.TurnCount++
+
+	// プレイヤー名を決定
+	player := "黒"
+	if color >= 128 {
+		player = "白"
+	}
+
+	move := GameMove{
+		TurnNumber: g.GameRecord.TurnCount,
+		Player:     player,
+		Row:        row,
+		Col:        col,
+		Color:      color,
+		Timestamp:  time.Now().Format(time.RFC3339),
+	}
+
+	g.GameRecord.Moves = append(g.GameRecord.Moves, move)
+	log.Printf("Move recorded: Turn %d, %s placed at (%d,%d) with color %d",
+		move.TurnNumber, move.Player, row, col, color)
+}
+
+// finishGameRecord はゲーム終了時の記録を完了し、ログ出力する
+func (g *Game) finishGameRecord() {
+	if g.GameRecord == nil {
+		return
+	}
+
+	g.GameRecord.EndTime = time.Now().Format(time.RFC3339)
+	g.GameRecord.Winner = g.Winner
+
+	// requirements.mdで指定された形式でログ出力
+	log.Println("=== GAME RECORD (Requirements Format) ===")
+	for _, move := range g.GameRecord.Moves {
+		log.Printf("%d %d %d", move.Row, move.Col, move.Color)
+	}
+	log.Println("=== END GAME RECORD ===")
+
+	log.Printf("Game finished: GameID=%s, Winner=%s, Turns=%d, Duration=%s to %s",
+		g.GameRecord.GameID, g.GameRecord.Winner, g.GameRecord.TurnCount,
+		g.GameRecord.StartTime, g.GameRecord.EndTime)
 }

@@ -65,6 +65,9 @@ type Game struct {
 	PlayerRole   string        // プレイヤーロール ("black" または "white")
 	IsOnline     bool          // オンラインモードフラグ
 	ErrorMessage string        // エラーメッセージ
+
+	// 対局記録関連
+	GameRecord *GameRecord // 対局記録
 }
 
 // Position はボード上の位置を表す
@@ -81,4 +84,27 @@ var directions = []Direction{
 	{-1, -1}, {-1, 0}, {-1, 1},
 	{0, -1}, {0, 1},
 	{1, -1}, {1, 0}, {1, 1},
+}
+
+// GameMove は1手の記録を表す
+type GameMove struct {
+	TurnNumber int    // ターン番号
+	Player     string // プレイヤー("黒"/"白")
+	Row        int    // 行座標(0-7)
+	Col        int    // 列座標(0-7)
+	Color      uint8  // 配置したコマの色(0-255)
+	Timestamp  string // 配置時刻(RFC3339形式)
+}
+
+// GameRecord は対局記録を表す
+type GameRecord struct {
+	GameID    string     // ゲームID
+	Player1ID string     // プレイヤー1のID
+	Player2ID string     // プレイヤー2のID(オフライン時は"CPU")
+	StartTime string     // ゲーム開始時刻
+	EndTime   string     // ゲーム終了時刻
+	Winner    string     // 勝者("黒"/"白"/"引き分け")
+	Moves     []GameMove // 全ての手の記録
+	GameMode  string     // ゲームモード("online"/"offline")
+	TurnCount int        // 総ターン数
 }

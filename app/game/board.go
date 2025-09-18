@@ -119,6 +119,9 @@ func (g *Game) placePiece(x, y int) bool {
 	// 新しいコマを配置
 	g.Board.Squares[x][y].Piece = &Piece{Color: g.NextColor}
 
+	// 手を記録
+	g.recordMove(x, y, g.NextColor)
+
 	// 注意: WebSocket送信は呼び出し元（game.go）で管理
 	// ここでは盤面処理のみを行う
 
@@ -126,6 +129,9 @@ func (g *Game) placePiece(x, y int) bool {
 	if g.isBoardFull() {
 		g.GameOver = true
 		g.calculateWinner()
+
+		// 対局記録を完了
+		g.finishGameRecord()
 
 		// オンラインモードの場合は、サーバーに終了を通知
 		if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
