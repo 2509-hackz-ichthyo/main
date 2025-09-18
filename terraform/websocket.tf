@@ -372,7 +372,6 @@ resource "aws_lambda_function" "hackz_ichthyo_game_handler" {
   environment {
     variables = {
       DYNAMODB_TABLE_NAME = aws_dynamodb_table.game_service.name
-      WHITESPACE_API_URL  = "http://43.206.209.210:3000"
     }
   }
 
