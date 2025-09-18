@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "embed"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"image/color"
@@ -8,10 +10,12 @@ import (
 	"syscall/js"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
-	"golang.org/x/image/font/basicfont"
 )
+
+//go:embed DotGothic16-Regular.ttf
+var fontData []byte
 
 type Game struct {
 	gameData          *GameData // パースした対局データ
@@ -25,6 +29,7 @@ type Game struct {
 	gameOver          bool      // ゲーム終了フラグ
 	winner            string    // 勝者（"黒" または "白"）
 	resultDisplayTime float64   // 勝敗表示時間（秒）
+	FontFace          *text.GoTextFace // フォントフェース
 }
 
 // GameArchive はAPIから返される対局データの構造体
@@ -139,24 +144,26 @@ func colorToRGB(c uint8) color.RGBA {
 
 // calculateWinner は全駒の色の平均値から勝者を決定する
 func (g *Game) calculateWinner() {
-	var colorSum int
-	var pieceCount int
+	total := 0
+	count := 0
 
-	for x := 0; x < BoardSize; x++ {
-		for y := 0; y < BoardSize; y++ {
-			if !g.board.Squares[x][y].IsEmpty() {
-				colorSum += int(g.board.Squares[x][y].Piece.Color)
-				pieceCount++
+	// 全ての駒の色を合計
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
+			square := &g.board.Squares[row][col]
+			if !square.IsEmpty() {
+				total += int(square.Piece.Color)
+				count++
 			}
 		}
 	}
 
-	if pieceCount == 0 {
+	if count == 0 {
 		g.winner = "引き分け"
 		return
 	}
 
-	average := float64(colorSum) / float64(pieceCount)
+	average := float64(total) / float64(count)
 
 	// 平均値が127.5未満なら黒、以上なら白の勝利
 	if average < 127.5 {
@@ -166,6 +173,21 @@ func (g *Game) calculateWinner() {
 	}
 
 	fmt.Printf("対局終了！平均色値: %.2f, 勝者: %s\n", average, g.winner)
+}
+
+// initializeFont はフォントを初期化する
+func (g *Game) initializeFont() error {
+	fontSource, err := text.NewGoTextFaceSource(bytes.NewReader(fontData))
+	if err != nil {
+		return fmt.Errorf("failed to create font source: %v", err)
+	}
+
+	g.FontFace = &text.GoTextFace{
+		Source: fontSource,
+		Size:   24,
+	}
+
+	return nil
 }
 
 // checkIs24Mode はURLから24-7モードかどうかを判定する
@@ -256,6 +278,11 @@ func NewGame() *Game {
 		isPlaying:   false, // データ読み込み完了後に開始
 		is24Mode:    is24Mode,
 		isLoading:   true, // 読み込み中
+	}
+
+	// フォントを初期化
+	if err := game.initializeFont(); err != nil {
+		fmt.Printf("フォント初期化エラー: %v\n", err)
 	}
 
 	// 初期盤面を設定
@@ -443,34 +470,33 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.drawPieces(screen)
 
 	// ゲーム終了時の勝利メッセージ表示
-	if g.gameOver {
-		// 簡単な勝利メッセージを画面中央に表示
+	if g.gameOver && g.FontFace != nil {
+		// 勝利メッセージを作成
 		message := fmt.Sprintf("どちらかというと %s の勝利！", g.winner)
 
+		// テキストの大きさを測定
+		textWidth, textHeight := text.Measure(message, g.FontFace, 0)
+
+		// メッセージを画面中央に配置
+		screenWidth, screenHeight := 800, 600
+		messageX := float64(screenWidth/2) - textWidth/2
+		messageY := float64(screenHeight/2) - textHeight/2
+
 		// 背景の四角形を描画（見やすくするため）
-		bgX := float32(200)
-		bgY := float32(280)
-		bgWidth := float32(400)
-		bgHeight := float32(40)
+		bgPadding := float32(20)
+		bgX := float32(messageX) - bgPadding
+		bgY := float32(messageY) - bgPadding
+		bgWidth := float32(textWidth) + bgPadding*2
+		bgHeight := float32(textHeight) + bgPadding*2
 
 		vector.DrawFilledRect(screen, bgX, bgY, bgWidth, bgHeight, color.RGBA{255, 255, 255, 240}, false)
 		vector.StrokeRect(screen, bgX, bgY, bgWidth, bgHeight, 3, color.Black, false)
 
-		// TODO: テキスト描画ライブラリを使ってメッセージを表示
-		// 勝者テキストを表示
-		winnerText := ""
-		if g.winner == "Black" {
-			winnerText = "黒の勝利!"
-		} else if g.winner == "White" {
-			winnerText = "白の勝利!"
-		} else {
-			winnerText = "引き分け!"
-		}
-
-		// テキストの位置を計算（中央揃え）
-		textX := int(bgX) + 200 - len(winnerText)*6 // 概算での中央揃え
-		textY := int(bgY) + 25
-		text.Draw(screen, winnerText, basicfont.Face7x13, textX, textY, color.Black)
+		// テキストを描画
+		textOptions := &text.DrawOptions{}
+		textOptions.GeoM.Translate(messageX, messageY)
+		textOptions.ColorScale.ScaleWithColor(color.Black)
+		text.Draw(screen, message, g.FontFace, textOptions)
 
 		// 現在はコンソールに表示のみ（ブラウザの開発者ツールで確認可能）
 		fmt.Printf("表示中: %s\n", message)
