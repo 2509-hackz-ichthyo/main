@@ -102,12 +102,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		textOptions.ColorScale.ScaleWithColor(color.Black)
 		text.Draw(screen, winMessage, g.FontFace, textOptions)
 	} else {
-		// 次の色のプレビューを描画
-		nextColorRGB := colorToRGB(g.NextColor)
-		previewX := float32(BoardOffset + BoardSize*CellSize + 40)
-		previewY := float32(BoardOffset + 60)
-		vector.DrawFilledCircle(screen, previewX, previewY, 20, nextColorRGB, false)
-		vector.StrokeCircle(screen, previewX, previewY, 20, 2, color.Black, false)
+		// 現在の手番を表示
+		g.drawCurrentTurnInfo(screen)
+		
+		// 次のコマのプレビューを描画（右側に移動）
+		g.drawNextPiecePreview(screen)
 	}
 }
 
@@ -184,4 +183,73 @@ func (g *Game) drawCenteredText(screen *ebiten.Image, message string, offsetX, o
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	return 800, 600
+}
+
+// drawCurrentTurnInfo は現在の手番情報を表示する
+func (g *Game) drawCurrentTurnInfo(screen *ebiten.Image) {
+	if g.FontFace == nil {
+		return
+	}
+
+	var turnMessage string
+	var messageColor color.Color
+
+	if g.IsOnline {
+		// オンラインモードの場合
+		if g.CurrentTurn {
+			turnMessage = "あなたの手番です"
+			messageColor = color.RGBA{0, 120, 0, 255} // 緑色
+		} else {
+			turnMessage = "相手の手番です"
+			messageColor = color.RGBA{120, 120, 120, 255} // グレー色
+		}
+	} else {
+		// オフラインモードの場合
+		currentPlayer := g.getCurrentPlayer()
+		turnMessage = fmt.Sprintf("%s の手番", currentPlayer)
+		messageColor = color.Black
+	}
+
+	// テキストを描画
+	textOptions := &text.DrawOptions{}
+	textOptions.GeoM.Translate(10, 0)
+	textOptions.ColorScale.ScaleWithColor(messageColor)
+	text.Draw(screen, turnMessage, g.FontFace, textOptions)
+}
+
+// drawNextPiecePreview は次のコマのプレビューを枠付きで表示する
+func (g *Game) drawNextPiecePreview(screen *ebiten.Image) {
+	if g.FontFace == nil {
+		return
+	}
+
+	// 次のコマの表示位置（右側に移動）
+	previewX := float32(BoardOffset + BoardSize*CellSize + 80)
+	previewY := float32(BoardOffset + 80)
+	
+	// 枠のサイズと位置
+	boxWidth := float32(100)
+	boxHeight := float32(80)
+	boxX := previewX - boxWidth/2
+	boxY := previewY - 30
+
+	// 枠を描画（背景色付き）
+	vector.DrawFilledRect(screen, boxX, boxY, boxWidth, boxHeight, color.RGBA{250, 250, 250, 255}, false)
+	vector.StrokeRect(screen, boxX, boxY, boxWidth, boxHeight, 2, color.Black, false)
+
+	// ラベルテキスト「次のコマ」を描画
+	labelText := "次のコマ"
+	labelWidth, _ := text.Measure(labelText, g.FontFace, 0)
+	labelX := float64(previewX) - labelWidth/2
+	labelY := float64(boxY + 20) - 80
+
+	textOptions := &text.DrawOptions{}
+	textOptions.GeoM.Translate(labelX, labelY)
+	textOptions.ColorScale.ScaleWithColor(color.Black)
+	text.Draw(screen, labelText, g.FontFace, textOptions)
+
+	// 次のコマの色を描画
+	nextColorRGB := colorToRGB(g.NextColor)
+	vector.DrawFilledCircle(screen, previewX, previewY+10, 20, nextColorRGB, false)
+	vector.StrokeCircle(screen, previewX, previewY+10, 20, 2, color.Black, false)
 }
