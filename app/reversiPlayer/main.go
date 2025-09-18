@@ -47,6 +47,85 @@ const (
 	BoardOffset = 50
 )
 
+// Position はボード上の位置を表す
+type Position struct {
+	X, Y int
+}
+
+// Direction はボード上の8方向を表す
+type Direction struct {
+	dx, dy int
+}
+
+var directions = []Direction{
+	{-1, -1}, {-1, 0}, {-1, 1},
+	{0, -1}, {0, 1},
+	{1, -1}, {1, 0}, {1, 1},
+}
+
+// isValidPosition は位置がボードの境界内かをチェックする
+func isValidPosition(x, y int) bool {
+	return x >= 0 && x < 8 && y >= 0 && y < 8
+}
+
+// findFlankingPieces は(x, y)にコマを置いた時に挟まれるコマを見つける
+func (g *Game) findFlankingPieces(x, y int, newColor uint8) [][]Position {
+	if !g.board.Squares[x][y].IsEmpty() {
+		return nil
+	}
+
+	var flankingLines [][]Position
+
+	for _, dir := range directions {
+		var line []Position
+		nx, ny := x+dir.dx, y+dir.dy
+
+		// この方向にコマがあるかを探す
+		for isValidPosition(nx, ny) && !g.board.Squares[nx][ny].IsEmpty() {
+			// コマを潜在的な挟みラインに追加
+			line = append(line, Position{nx, ny})
+			nx, ny = nx+dir.dx, ny+dir.dy
+		}
+
+		// ラインに少なくとも2つのコマがある場合、挟みが成立
+		if len(line) >= 2 {
+			// 最奥のコマは対象から外す
+			line = line[:len(line)-1]
+			flankingLines = append(flankingLines, line)
+		}
+	}
+
+	return flankingLines
+}
+
+// applyFlankingEffect は挟み処理（色変更）を適用する
+func (g *Game) applyFlankingEffect(x, y int, newColor uint8) {
+	flankingLines := g.findFlankingPieces(x, y, newColor)
+
+	// 各挟みラインを処理
+	for _, line := range flankingLines {
+		if len(line) > 0 {
+			// 挟んでいるコマを取得
+			end := line[len(line)-1]
+
+			a1 := newColor                                         // 新しく配置されたコマ
+			a2 := g.board.Squares[end.X][end.Y].Piece.Color       // 遠端の挟んでいるコマ
+
+			// 間のすべてのコマに色変更を適用
+			for _, pos := range line {
+				piece := g.board.Squares[pos.X][pos.Y].Piece
+				if piece != nil {
+					b1 := piece.Color
+
+					// 色変更式を適用: c = (a1 + a2 + b1) / 3
+					newColorValue := uint8((uint16(a1) + uint16(a2) + uint16(b1)) / 3)
+					piece.Color = newColorValue
+				}
+			}
+		}
+	}
+}
+
 // colorToRGB は0-255の色値をRGBに変換する
 func colorToRGB(c uint8) color.RGBA {
 	return color.RGBA{R: c, G: c, B: c, A: 255}
@@ -63,50 +142,50 @@ func checkIs24Mode() bool {
 func fetchRandomGameData() (*GameArchive, error) {
 	// Terraformから取得した実際のAPI URL
 	apiURL := "https://ut7hbw3323.execute-api.ap-northeast-1.amazonaws.com/prod/replay/random"
-	
+
 	promise := js.Global().Get("fetch").Invoke(apiURL)
-	
+
 	// Promise を同期的に待つためのチャネル
 	resultCh := make(chan *GameArchive, 1)
 	errorCh := make(chan error, 1)
-	
+
 	// then ハンドラー
 	promise.Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		response := args[0]
-		
+
 		// レスポンスを JSON として解析
 		jsonPromise := response.Call("json")
 		jsonPromise.Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			data := args[0]
-			
+
 			// JavaScriptオブジェクトを Go 構造体に変換
 			jsonStr := js.Global().Get("JSON").Call("stringify", data).String()
-			
+
 			var resp RandomGameResponse
 			if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
 				errorCh <- fmt.Errorf("JSON parse error: %v", err)
 				return nil
 			}
-			
+
 			if !resp.Success || resp.Data == nil {
 				errorCh <- fmt.Errorf("API error: %s", resp.Message)
 				return nil
 			}
-			
+
 			resultCh <- resp.Data
 			return nil
 		}))
-		
+
 		return nil
 	}))
-	
+
 	// catch ハンドラー
 	promise.Call("catch", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		error := args[0]
 		errorCh <- fmt.Errorf("fetch error: %s", error.Get("message").String())
 		return nil
 	}))
-	
+
 	// 結果を待つ
 	select {
 	case result := <-resultCh:
@@ -120,7 +199,7 @@ func fetchRandomGameData() (*GameArchive, error) {
 func (g *Game) initializeBoard() {
 	// ボードを空にする
 	g.board = &Board{}
-	
+
 	// 中央の4つのコマを配置（リバーシの初期配置）
 	// 中央は (3,3), (3,4), (4,3), (4,4)
 	g.board.Squares[3][3].Piece = &Piece{Color: 255} // 白 (3,3)
@@ -132,16 +211,16 @@ func (g *Game) initializeBoard() {
 // NewGame は新しいゲームインスタンスを作成する
 func NewGame() *Game {
 	is24Mode := checkIs24Mode()
-	
+
 	game := &Game{
-		currentMove: -1,     // まだ何も置いていない状態
-		timer:       0,      // タイマー初期化
-		interval:    1.0,    // 1秒間隔
-		isPlaying:   false,  // データ読み込み完了後に開始
+		currentMove: -1,    // まだ何も置いていない状態
+		timer:       0,     // タイマー初期化
+		interval:    1.0,   // 1秒間隔
+		isPlaying:   false, // データ読み込み完了後に開始
 		is24Mode:    is24Mode,
-		isLoading:   true,   // 読み込み中
+		isLoading:   true, // 読み込み中
 	}
-	
+
 	// 初期盤面を設定
 	game.initializeBoard()
 
@@ -170,7 +249,7 @@ func (g *Game) loadMockData() {
 		fmt.Printf("モックデータ解析エラー: %v\n", err)
 		return
 	}
-	
+
 	g.gameData = gameData
 	g.initializeBoard() // 初期盤面を設定
 	g.isLoading = false
@@ -181,22 +260,22 @@ func (g *Game) loadMockData() {
 // loadNext24Data は24-7モード用の次の対局データを読み込む
 func (g *Game) loadNext24Data() error {
 	fmt.Println("ランダム対局データを取得中...")
-	
+
 	// ランダム対局データを取得
 	gameArchive, err := fetchRandomGameData()
 	if err != nil {
 		return fmt.Errorf("対局データ取得失敗: %v", err)
 	}
-	
+
 	fmt.Printf("対局データ取得成功: GameID=%s\n", gameArchive.GameId)
-	
+
 	// 対局データは既に通常形式なので、直接パース
 	fmt.Println("対局データをパース中...")
 	gameData, err := parseGameData(gameArchive.GameData)
 	if err != nil {
 		return fmt.Errorf("パース失敗: %v", err)
 	}
-	
+
 	// ゲーム状態を更新
 	g.gameData = gameData
 	g.initializeBoard() // 初期盤面を設定
@@ -204,7 +283,7 @@ func (g *Game) loadNext24Data() error {
 	g.timer = 0         // タイマーリセット
 	g.isLoading = false
 	g.isPlaying = true
-	
+
 	fmt.Printf("24-7データ読み込み完了。総手数: %d\n", gameData.GetMoveCount())
 	return nil
 }
@@ -237,7 +316,7 @@ func (g *Game) placeNextPiece() {
 	if g.currentMove+1 >= g.gameData.GetMoveCount() {
 		fmt.Println("対局終了")
 		g.isPlaying = false
-		
+
 		// 24-7モードの場合、次の対局を自動読み込み
 		if g.is24Mode {
 			fmt.Println("次の対局を読み込み中...")
@@ -261,7 +340,8 @@ func (g *Game) placeNextPiece() {
 		return
 	}
 
-	// ボードに反映
+	// ボードに反映（挟み処理を適用）
+	g.applyFlankingEffect(move.Row, move.Col, move.Color)
 	g.board.Squares[move.Row][move.Col].Piece = &Piece{Color: move.Color}
 
 	fmt.Printf("手%d: (%d,%d) 色=%d\n", g.currentMove+1, move.Row, move.Col, move.Color)
