@@ -156,7 +156,7 @@ resource "aws_ecs_service" "hackz_ichthyo_ecs_service" {
   name            = "hackz-ichthyo-ecs-service"
   cluster         = aws_ecs_cluster.hackz_ichthyo_ecs_cluster.id
   task_definition = aws_ecs_task_definition.hackz_ichthyo_ecs_task_definition.arn
-  desired_count   = 0  # Temporarily stopped
+  desired_count   = 1  # Start service
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -164,6 +164,14 @@ resource "aws_ecs_service" "hackz_ichthyo_ecs_service" {
     security_groups  = [aws_security_group.hackz_ichthyo_sg.id]
     assign_public_ip = true
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.hackz_ichthyo_tg.arn
+    container_name   = "hackz-ichthyo-container"
+    container_port   = 3000
+  }
+
+  depends_on = [aws_lb_listener.hackz_ichthyo_listener]
 }
 
 # Task実行用 IAM Role(ECRリポジトリからイメージをpullしてくる際に必要)
@@ -182,6 +190,64 @@ resource "aws_iam_role_policy_attachment" "hackz_ichthyo_ecs_task_execution_role
 resource "aws_cloudwatch_log_group" "hackz_ichthyo_log_group" {
   name              = "/ecs/hackz-ichthyo-ecs"
   retention_in_days = 30
+}
+
+# Elastic IP for Network Load Balancer
+resource "aws_eip" "hackz_ichthyo_nlb_eip" {
+  domain = "vpc"
+  tags = {
+    Name = "hackz-ichthyo-nlb-eip"
+  }
+}
+
+# Network Load Balancer
+resource "aws_lb" "hackz_ichthyo_nlb" {
+  name               = "hackz-ichthyo-nlb"
+  internal           = false
+  load_balancer_type = "network"
+  
+  subnet_mapping {
+    subnet_id     = aws_subnet.hackz_ichthyo_subnet_public.id
+    allocation_id = aws_eip.hackz_ichthyo_nlb_eip.id
+  }
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name = "hackz-ichthyo-nlb"
+  }
+}
+
+# Target Group for ECS Service
+resource "aws_lb_target_group" "hackz_ichthyo_tg" {
+  name        = "hackz-ichthyo-tg"
+  port        = 3000
+  protocol    = "TCP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.hackz_ichthyo_vpc.id
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    protocol            = "TCP"
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Name = "hackz-ichthyo-target-group"
+  }
+}
+
+# Load Balancer Listener
+resource "aws_lb_listener" "hackz_ichthyo_listener" {
+  load_balancer_arn = aws_lb.hackz_ichthyo_nlb.arn
+  port              = "3000"
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.hackz_ichthyo_tg.arn
+  }
 }
 
 # REST API Gateway for game replay functionality
@@ -351,4 +417,16 @@ resource "aws_lambda_permission" "game_replay_api_permission" {
 output "game_replay_api_url" {
   description = "URL for the game replay REST API"
   value       = "${aws_api_gateway_deployment.game_replay_api_deployment.invoke_url}/replay/random"
+}
+
+# Output the static IP address
+output "hackz_ichthyo_static_ip" {
+  description = "Static IP address for ECS Decode API"
+  value       = aws_eip.hackz_ichthyo_nlb_eip.public_ip
+}
+
+# Output the NLB endpoint
+output "hackz_ichthyo_nlb_endpoint" {
+  description = "Network Load Balancer endpoint"
+  value       = "http://${aws_eip.hackz_ichthyo_nlb_eip.public_ip}:3000"
 }

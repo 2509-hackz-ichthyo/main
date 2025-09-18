@@ -14,16 +14,16 @@ import (
 )
 
 type Game struct {
-	gameData         *GameData // パースした対局データ
-	board            *Board    // 現在のボード状態
-	currentMove      int       // 現在の手数
-	timer            float64   // 経過時間（秒）
-	interval         float64   // コマ配置間隔（3秒）
-	isPlaying        bool      // 再生中フラグ
-	is24Mode         bool      // 24-7モードフラグ
-	isLoading        bool      // データ読み込み中フラグ
-	gameOver         bool      // ゲーム終了フラグ
-	winner           string    // 勝者（"黒" または "白"）
+	gameData          *GameData // パースした対局データ
+	board             *Board    // 現在のボード状態
+	currentMove       int       // 現在の手数
+	timer             float64   // 経過時間（秒）
+	interval          float64   // コマ配置間隔（3秒）
+	isPlaying         bool      // 再生中フラグ
+	is24Mode          bool      // 24-7モードフラグ
+	isLoading         bool      // データ読み込み中フラグ
+	gameOver          bool      // ゲーム終了フラグ
+	winner            string    // 勝者（"黒" または "白"）
 	resultDisplayTime float64   // 勝敗表示時間（秒）
 }
 
@@ -113,8 +113,8 @@ func (g *Game) applyFlankingEffect(x, y int, newColor uint8) {
 			// 挟んでいるコマを取得
 			end := line[len(line)-1]
 
-			a1 := newColor                                         // 新しく配置されたコマ
-			a2 := g.board.Squares[end.X][end.Y].Piece.Color       // 遠端の挟んでいるコマ
+			a1 := newColor                                  // 新しく配置されたコマ
+			a2 := g.board.Squares[end.X][end.Y].Piece.Color // 遠端の挟んでいるコマ
 
 			// 間のすべてのコマに色変更を適用
 			for _, pos := range line {
@@ -163,7 +163,7 @@ func (g *Game) calculateWinner() {
 	} else {
 		g.winner = "白"
 	}
-	
+
 	fmt.Printf("対局終了！平均色値: %.2f, 勝者: %s\n", average, g.winner)
 }
 
@@ -285,7 +285,7 @@ func (g *Game) loadMockData() {
 		fmt.Printf("モックデータ解析エラー: %v\n", err)
 		return
 	}
-	
+
 	g.gameData = gameData
 	g.initializeBoard() // 初期盤面を設定
 	g.gameOver = false  // ゲームオーバーフラグをリセット
@@ -293,7 +293,7 @@ func (g *Game) loadMockData() {
 	g.isLoading = false
 	g.isPlaying = true
 	fmt.Printf("モックデータ読み込み完了。総手数: %d\n", gameData.GetMoveCount())
-}// loadNext24Data は24-7モード用の次の対局データを読み込む
+} // loadNext24Data は24-7モード用の次の対局データを読み込む
 func (g *Game) loadNext24Data() error {
 	fmt.Println("ランダム対局データを取得中...")
 
@@ -334,13 +334,13 @@ func (g *Game) Update() error {
 
 	// 勝敗表示中の処理
 	if g.gameOver {
-		g.resultDisplayTime -= 1.0 / 60.0  // タイマーを減らす
+		g.resultDisplayTime -= 1.0 / 60.0 // タイマーを減らす
 		if g.resultDisplayTime <= 0 {
 			// 24-7モードの場合、次の対局を自動読み込み
 			if g.is24Mode {
 				fmt.Println("次の対局を読み込み中...")
 				g.isLoading = true
-				g.gameOver = false  // ゲームオーバーフラグをリセット
+				g.gameOver = false // ゲームオーバーフラグをリセット
 				go func() {
 					if err := g.loadNext24Data(); err != nil {
 						fmt.Printf("次の対局読み込みエラー: %v\n", err)
@@ -380,8 +380,8 @@ func (g *Game) placeNextPiece() {
 		fmt.Println("対局終了")
 		g.isPlaying = false
 		g.gameOver = true
-		g.calculateWinner()  // 勝者を計算
-		g.resultDisplayTime = 3.0  // 3秒間勝敗を表示
+		g.calculateWinner()       // 勝者を計算
+		g.resultDisplayTime = 3.0 // 3秒間勝敗を表示
 
 		return
 	}
@@ -435,7 +435,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.gameOver {
 		// 簡単な勝利メッセージを画面中央に表示
 		message := fmt.Sprintf("どちらかというと %s の勝利！", g.winner)
-		
+
 		// 背景の四角形を描画（見やすくするため）
 		bgX := float32(200)
 		bgY := float32(280)
@@ -455,12 +455,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		} else {
 			winnerText = "引き分け!"
 		}
-		
+
 		// テキストの位置を計算（中央揃え）
 		textX := int(bgX) + 200 - len(winnerText)*6 // 概算での中央揃え
 		textY := int(bgY) + 25
 		text.Draw(screen, winnerText, basicfont.Face7x13, textX, textY, color.Black)
-		
+
 		// 現在はコンソールに表示のみ（ブラウザの開発者ツールで確認可能）
 		fmt.Printf("表示中: %s\n", message)
 	}
