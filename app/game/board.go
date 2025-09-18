@@ -126,8 +126,13 @@ func (g *Game) placePiece(x, y int) bool {
 	// 注意: WebSocket送信は呼び出し元（game.go）で管理
 	// ここでは盤面処理のみを行う
 
-	// 盤面満杯の終了判定（オンライン・オフライン共通）
-	if g.isBoardFull() {
+	// ゲーム終了判定（オンライン・オフライン共通）
+	// TODO: 本来はリバーシルールで両プレイヤーが打てる手がない場合も終了
+	boardFull := g.isBoardFull()
+	log.Printf("Board full check: %v", boardFull)
+	
+	if boardFull {
+		log.Printf("Game ending - board is full")
 		g.GameOver = true
 		g.calculateWinner()
 
@@ -135,6 +140,7 @@ func (g *Game) placePiece(x, y int) bool {
 		g.finishGameRecord()
 
 		// オンラインモードの場合は、サーバーに終了と対局データを送信
+		log.Printf("g.IsOnline: %v, g.State: %v, g.WSConnection: %v", g.IsOnline, g.State, g.WSConnection)
 		if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
 			err := g.WSConnection.FinishGameWithData(g.PlayerID, g.RoomID, g.Winner, g.GameRecord)
 			if err != nil {
@@ -142,6 +148,8 @@ func (g *Game) placePiece(x, y int) bool {
 			} else {
 				log.Printf("Game finished with data sent to server! Winner: %s", g.Winner)
 			}
+		} else {
+			log.Printf("Not sending game data - conditions not met")
 		}
 	} else if !g.IsOnline {
 		// ローカルモードでのみターンを切り替え

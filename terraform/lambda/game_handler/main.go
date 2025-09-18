@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-	"math/rand"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -723,12 +723,12 @@ func collectGameMoveHistory(dynamo *dynamodb.DynamoDB, roomId string) (string, e
 	if len(gameDataLines) == 0 {
 		return "0 0 0", nil // Fallback for empty games
 	}
-	
+
 	gameDataText := fmt.Sprintf("%s\n", gameDataLines[0])
 	for i := 1; i < len(gameDataLines); i++ {
 		gameDataText += fmt.Sprintf("%s\n", gameDataLines[i])
 	}
-	
+
 	return gameDataText, nil
 }
 

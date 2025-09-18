@@ -40,9 +40,9 @@ type WSMessage struct {
 	NextColor  int    `json:"nextColor,omitempty"`  // 次に配置する色
 	GamePhase  string `json:"gamePhase,omitempty"`  // "PLAYING" or "FINISHED"
 	Winner     string `json:"winner,omitempty"`     // 勝者
-	
+
 	// 対局データ送信用フィールド
-	GameData   *GameData `json:"gameData,omitempty"` // 対局データ
+	GameData *GameData `json:"gameData,omitempty"` // 対局データ
 }
 
 // GameData は対局データをWebSocket送信用に変換した構造体
@@ -230,7 +230,7 @@ func (ws *WSConnection) FinishGameWithData(userID, roomID, winner string, gameRe
 		RoomID: roomID,
 		Winner: winner,
 	}
-	
+
 	// GameRecordが存在する場合はGameDataに変換して送信
 	if gameRecord != nil {
 		moves := make([]MoveData, len(gameRecord.Moves))
@@ -241,17 +241,17 @@ func (ws *WSConnection) FinishGameWithData(userID, roomID, winner string, gameRe
 				Color: move.Color,
 			}
 		}
-		
+
 		message.GameData = &GameData{
 			GameID:    gameRecord.GameID,
 			StartTime: gameRecord.StartTime,
 			EndTime:   gameRecord.EndTime,
 			Moves:     moves,
 		}
-		
+
 		log.Printf("Sending game data with %d moves to server", len(moves))
 	}
-	
+
 	return ws.SendMessage(message)
 }
 

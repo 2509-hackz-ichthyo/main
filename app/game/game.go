@@ -192,6 +192,9 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 		}
 		g.Board.Squares[x][y].Piece = &Piece{Color: color}
 		log.Printf("Applied confirmed move at (%d, %d) color %d", x, y, color)
+		
+		// オンラインモードでも手を記録
+		g.recordMove(x, y, color)
 	} else {
 		// 既にコマが存在する場合は上書きしない (サーバと競合があるケースは将来 syncState で解決)
 		log.Printf("Square (%d,%d) already occupied; skipping overwrite", x, y)
@@ -201,6 +204,22 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 		g.GameOver = true
 		g.calculateWinner()
 		log.Printf("Game ended! Winner: %s", g.Winner)
+		
+		// 対局記録を完了
+		g.finishGameRecord()
+		
+		// オンラインモードの場合は、サーバーに終了と対局データを送信
+		log.Printf("g.IsOnline: %v, g.State: %v, g.WSConnection: %v", g.IsOnline, g.State, g.WSConnection)
+		if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {
+			err := g.WSConnection.FinishGameWithData(g.PlayerID, g.RoomID, g.Winner, g.GameRecord)
+			if err != nil {
+				log.Printf("Failed to send game finish with data: %v", err)
+			} else {
+				log.Printf("Game finished with data sent to server! Winner: %s", g.Winner)
+			}
+		} else {
+			log.Printf("Not sending game data - conditions not met")
+		}
 	}
 
 	// ターン情報を更新
