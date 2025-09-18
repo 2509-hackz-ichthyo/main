@@ -29,14 +29,15 @@ type Game struct {
 
 // GameArchive はAPIから返される対局データの構造体
 type GameArchive struct {
-	GameId    string `json:"gameId"`
-	RoomId    string `json:"roomId"`
-	Player1Id string `json:"player1Id"`
-	Player2Id string `json:"player2Id"`
-	Winner    string `json:"winner"`
-	GamePhase string `json:"gamePhase"`
-	EndTime   string `json:"endTime"`
-	GameData  string `json:"gameData"`
+	GameId      string `json:"gameId"`
+	RoomId      string `json:"roomId"`
+	Player1Id   string `json:"player1Id"`
+	Player2Id   string `json:"player2Id"`
+	Winner      string `json:"winner"`
+	GamePhase   string `json:"gamePhase"`
+	EndTime     string `json:"endTime"`
+	GameData    string `json:"gameData"`
+	DecodedData string `json:"decodedData"`
 }
 
 // RandomGameResponse は /replay/random APIのレスポンス
@@ -305,9 +306,19 @@ func (g *Game) loadNext24Data() error {
 
 	fmt.Printf("対局データ取得成功: GameID=%s\n", gameArchive.GameId)
 
-	// 対局データは既に通常形式なので、直接パース
+	// 対局データは10進数形式のDecodedDataを使用
 	fmt.Println("対局データをパース中...")
-	gameData, err := parseGameData(gameArchive.GameData)
+	var gameData *GameData
+
+	// DecodedDataが存在する場合はそれを使用、そうでなければGameDataをフォールバック
+	if gameArchive.DecodedData != "" {
+		fmt.Println("DecodedData（10進数形式）を使用...")
+		gameData, err = parseGameData(gameArchive.DecodedData)
+	} else {
+		fmt.Println("GameData（レガシー形式）を使用...")
+		gameData, err = parseGameData(gameArchive.GameData)
+	}
+
 	if err != nil {
 		return fmt.Errorf("パース失敗: %v", err)
 	}

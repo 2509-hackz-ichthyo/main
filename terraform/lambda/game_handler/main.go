@@ -781,9 +781,20 @@ func convertToWhitespace(gameDataText string) (string, error) {
 	apiURL := "http://18.181.38.132:3000"
 	fmt.Printf("Using fixed IP API URL: %s\n", apiURL)
 
-	// Decode APIの新しいリクエスト形式に合わせて修正
-	reqBody := map[string]string{
-		"whitespace": gameDataText,
+	// ゲームデータテキストを行ごとに分割して配列に変換
+	lines := strings.Split(strings.TrimSpace(gameDataText), "\n")
+	var validLines []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			validLines = append(validLines, line)
+		}
+	}
+
+	// Decode APIの正しいリクエスト形式（配列形式）
+	reqBody := map[string]interface{}{
+		"command_type": "DecimalToWhitespace",
+		"payload":      validLines,
 	}
 	fmt.Printf("Request body: %+v\n", reqBody)
 
@@ -814,9 +825,17 @@ func convertToWhitespace(gameDataText string) (string, error) {
 	}
 	fmt.Printf("Decode API response: %+v\n", apiResp)
 
-	// レスポンスから結果を取得
-	if result, ok := apiResp["result"].(string); ok && result != "" {
-		fmt.Printf("Converted whitespace data: %q\n", result)
+	// result_whitespaceフィールドから結果を取得（配列形式）
+	if resultArray, ok := apiResp["result_whitespace"].([]interface{}); ok && len(resultArray) > 0 {
+		// 配列の各要素を文字列として連結
+		var whitespaceLines []string
+		for _, item := range resultArray {
+			if line, ok := item.(string); ok {
+				whitespaceLines = append(whitespaceLines, line)
+			}
+		}
+		result := strings.Join(whitespaceLines, "")
+		fmt.Printf("Converted whitespace data (length: %d)\n", len(result))
 		return result, nil
 	}
 

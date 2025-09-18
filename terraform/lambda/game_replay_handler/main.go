@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -17,14 +20,15 @@ import (
 
 // GameArchive represents the archived game data structure
 type GameArchive struct {
-	GameId    string `json:"gameId"`
-	RoomId    string `json:"roomId"`
-	Player1Id string `json:"player1Id"`
-	Player2Id string `json:"player2Id"`
-	Winner    string `json:"winner"`
-	GamePhase string `json:"gamePhase"`
-	EndTime   string `json:"endTime"`
-	GameData  string `json:"gameData"`
+	GameId      string `json:"gameId"`
+	RoomId      string `json:"roomId"`
+	Player1Id   string `json:"player1Id"`
+	Player2Id   string `json:"player2Id"`
+	Winner      string `json:"winner"`
+	GamePhase   string `json:"gamePhase"`
+	EndTime     string `json:"endTime"`
+	GameData    string `json:"gameData"`    // Whitespace形式
+	DecodedData string `json:"decodedData"` // 10進数形式（新規追加）
 }
 
 // APIResponse represents the REST API response structure
@@ -137,7 +141,7 @@ func getRandomGame() (*GameArchive, error) {
 
 	// Scan the game-archive table to get all games
 	scanInput := &dynamodb.ScanInput{
-		TableName: aws.String(tableName),
+		TableName:        aws.String(tableName),
 		FilterExpression: aws.String("SK = :sk"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":sk": {S: aws.String("ARCHIVE")},
@@ -189,8 +193,132 @@ func getRandomGame() (*GameArchive, error) {
 	}
 
 	fmt.Printf("Selected game: %s (winner: %s)\n", gameArchive.GameId, gameArchive.Winner)
-	
+
+	// Whitespace→10進数変換を実行
+	if gameArchive.GameData != "" {
+		decodedData, err := convertWhitespaceToDecimal(gameArchive.GameData)
+		if err != nil {
+			fmt.Printf("Warning: Failed to decode whitespace data: %v\n", err)
+			// エラーでも処理続行（Whitespace形式のまま返却）
+		} else {
+			gameArchive.DecodedData = decodedData
+			fmt.Printf("Successfully converted whitespace to decimal format\n")
+		}
+	}
+
 	return gameArchive, nil
+}
+
+// convertWhitespaceToDecimal はWhitespace形式データを10進数形式に変換する
+func convertWhitespaceToDecimal(whitespaceData string) (string, error) {
+	// 固定IPアドレスを使用（ECS Fargateへのアクセス）
+	apiURL := "http://18.181.38.132:3000"
+	fmt.Printf("Converting whitespace to decimal using API: %s\n", apiURL)
+	fmt.Printf("Input whitespace data length: %d, first 100 chars: %q\n", len(whitespaceData), whitespaceData[:min(100, len(whitespaceData))])
+
+	if whitespaceData == "" {
+		return "", fmt.Errorf("empty whitespace data")
+	}
+
+	// Split whitespace data into sentences (3 lines each)
+	// Each sentence follows pattern: SSS{4bit}LSSS{4bit}LSSS{8bit}L
+	lines := strings.Split(whitespaceData, "\n")
+
+	// Filter out empty lines
+	var validLines []string
+	for _, line := range lines {
+		if line != "" {
+			validLines = append(validLines, line)
+		}
+	}
+
+	fmt.Printf("Total lines after filtering: %d\n", len(validLines))
+
+	// Group into sentences (3 lines each)
+	var sentences []string
+	for i := 0; i < len(validLines); i += 3 {
+		if i+2 < len(validLines) {
+			sentence := validLines[i] + "\n" + validLines[i+1] + "\n" + validLines[i+2] + "\n"
+			sentences = append(sentences, sentence)
+			fmt.Printf("Created sentence %d: %q\n", len(sentences), sentence[:min(50, len(sentence))])
+		} else {
+			fmt.Printf("Warning: Incomplete sentence at line %d, remaining lines: %d\n", i, len(validLines)-i)
+		}
+	}
+
+	if len(sentences) == 0 {
+		return "", fmt.Errorf("no valid whitespace sentences found in data")
+	}
+
+	fmt.Printf("Total sentences created: %d\n", len(sentences))
+
+	// Prepare the request payload
+	reqBody := map[string]interface{}{
+		"command_type": "WhitespaceToDecimal",
+		"payload":      sentences, // Array of sentences instead of single string
+	}
+
+	fmt.Printf("Request body prepared with %d sentences\n", len(sentences))
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %v", err)
+	}
+	fmt.Printf("JSON request prepared (length: %d)\n", len(jsonData))
+
+	resp, err := http.Post(apiURL+"/v1/decode", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to call decode API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	fmt.Printf("Response status code: %d\n", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		// レスポンスボディを読んでエラー内容を確認
+		bodyBytes := make([]byte, 1024)
+		n, _ := resp.Body.Read(bodyBytes)
+		return "", fmt.Errorf("decode API returned status code: %d, body: %s", resp.StatusCode, string(bodyBytes[:n]))
+	}
+
+	// Decode APIレスポンス形式に合わせて解析
+	var apiResp map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %v", err)
+	}
+	fmt.Printf("Decode API response keys: %v\n", getMapKeys(apiResp))
+
+	// result_decimalsフィールドから結果を取得（配列形式）
+	if resultArray, ok := apiResp["result_decimals"].([]interface{}); ok && len(resultArray) > 0 {
+		// 配列の各要素を文字列として連結
+		var decimalLines []string
+		for _, item := range resultArray {
+			if line, ok := item.(string); ok {
+				decimalLines = append(decimalLines, line)
+			}
+		}
+		result := strings.Join(decimalLines, "\n")
+		fmt.Printf("Converted decimal data (lines: %d): %q\n", len(decimalLines), result[:min(200, len(result))])
+		return result, nil
+	}
+
+	return "", fmt.Errorf("empty or invalid decode result, full response keys: %v", getMapKeys(apiResp))
+}
+
+// helper function to get map keys for debugging
+func getMapKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// helper function for min
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func main() {
