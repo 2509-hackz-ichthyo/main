@@ -1,8 +1,8 @@
 package main
 
 import (
-	_ "embed"
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"image/color"
@@ -18,17 +18,17 @@ import (
 var fontData []byte
 
 type Game struct {
-	gameData          *GameData // パースした対局データ
-	board             *Board    // 現在のボード状態
-	currentMove       int       // 現在の手数
-	timer             float64   // 経過時間（秒）
-	interval          float64   // コマ配置間隔（3秒）
-	isPlaying         bool      // 再生中フラグ
-	is24Mode          bool      // 24-7モードフラグ
-	isLoading         bool      // データ読み込み中フラグ
-	gameOver          bool      // ゲーム終了フラグ
-	winner            string    // 勝者（"黒" または "白"）
-	resultDisplayTime float64   // 勝敗表示時間（秒）
+	gameData          *GameData        // パースした対局データ
+	board             *Board           // 現在のボード状態
+	currentMove       int              // 現在の手数
+	timer             float64          // 経過時間（秒）
+	interval          float64          // コマ配置間隔（3秒）
+	isPlaying         bool             // 再生中フラグ
+	is24Mode          bool             // 24-7モードフラグ
+	isLoading         bool             // データ読み込み中フラグ
+	gameOver          bool             // ゲーム終了フラグ
+	winner            string           // 勝者（"黒" または "白"）
+	resultDisplayTime float64          // 勝敗表示時間（秒）
 	FontFace          *text.GoTextFace // フォントフェース
 }
 

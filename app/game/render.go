@@ -104,7 +104,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	} else {
 		// 現在の手番を表示
 		g.drawCurrentTurnInfo(screen)
-		
+
 		// 次のコマのプレビューを描画（右側に移動）
 		g.drawNextPiecePreview(screen)
 	}
@@ -226,7 +226,7 @@ func (g *Game) drawNextPiecePreview(screen *ebiten.Image) {
 	// 次のコマの表示位置（右側に移動）
 	previewX := float32(BoardOffset + BoardSize*CellSize + 80)
 	previewY := float32(BoardOffset + 80)
-	
+
 	// 枠のサイズと位置
 	boxWidth := float32(100)
 	boxHeight := float32(80)
@@ -241,7 +241,7 @@ func (g *Game) drawNextPiecePreview(screen *ebiten.Image) {
 	labelText := "次のコマ"
 	labelWidth, _ := text.Measure(labelText, g.FontFace, 0)
 	labelX := float64(previewX) - labelWidth/2
-	labelY := float64(boxY + 20) - 80
+	labelY := float64(boxY+20) - 80
 
 	textOptions := &text.DrawOptions{}
 	textOptions.GeoM.Translate(labelX, labelY)
