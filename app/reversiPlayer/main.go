@@ -116,12 +116,24 @@ func fetchRandomGameData() (*GameArchive, error) {
 	}
 }
 
+// initializeBoard はリバーシの初期盤面を設定する
+func (g *Game) initializeBoard() {
+	// ボードを空にする
+	g.board = &Board{}
+	
+	// 中央の4つのコマを配置（リバーシの初期配置）
+	// 中央は (3,3), (3,4), (4,3), (4,4)
+	g.board.Squares[3][3].Piece = &Piece{Color: 255} // 白 (3,3)
+	g.board.Squares[3][4].Piece = &Piece{Color: 0}   // 黒 (3,4)
+	g.board.Squares[4][3].Piece = &Piece{Color: 0}   // 黒 (4,3)
+	g.board.Squares[4][4].Piece = &Piece{Color: 255} // 白 (4,4)
+}
+
 // NewGame は新しいゲームインスタンスを作成する
 func NewGame() *Game {
 	is24Mode := checkIs24Mode()
 	
 	game := &Game{
-		board:       &Board{},
 		currentMove: -1,     // まだ何も置いていない状態
 		timer:       0,      // タイマー初期化
 		interval:    1.0,    // 1秒間隔
@@ -129,6 +141,9 @@ func NewGame() *Game {
 		is24Mode:    is24Mode,
 		isLoading:   true,   // 読み込み中
 	}
+	
+	// 初期盤面を設定
+	game.initializeBoard()
 
 	if is24Mode {
 		fmt.Println("24-7モードで開始します")
@@ -157,6 +172,7 @@ func (g *Game) loadMockData() {
 	}
 	
 	g.gameData = gameData
+	g.initializeBoard() // 初期盤面を設定
 	g.isLoading = false
 	g.isPlaying = true
 	fmt.Printf("モックデータ読み込み完了。総手数: %d\n", gameData.GetMoveCount())
@@ -183,7 +199,7 @@ func (g *Game) loadNext24Data() error {
 	
 	// ゲーム状態を更新
 	g.gameData = gameData
-	g.board = &Board{}  // ボードをリセット
+	g.initializeBoard() // 初期盤面を設定
 	g.currentMove = -1  // 手数をリセット
 	g.timer = 0         // タイマーリセット
 	g.isLoading = false
@@ -288,9 +304,9 @@ func (g *Game) drawPieces(screen *ebiten.Image) {
 		for col := 0; col < BoardSize; col++ {
 			square := &g.board.Squares[row][col]
 			if !square.IsEmpty() {
-				// コマの位置を計算
-				centerX := float32(BoardOffset + col*CellSize + CellSize/2)
-				centerY := float32(BoardOffset + row*CellSize + CellSize/2)
+				// コマの位置を計算（row/colを入れ替えて回転を修正）
+				centerX := float32(BoardOffset + row*CellSize + CellSize/2)
+				centerY := float32(BoardOffset + col*CellSize + CellSize/2)
 				radius := float32(CellSize/2 - 4) // 少し余白を残す
 
 				// 色を取得してRGBAに変換
