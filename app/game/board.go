@@ -130,7 +130,7 @@ func (g *Game) placePiece(x, y int) bool {
 	// TODO: 本来はリバーシルールで両プレイヤーが打てる手がない場合も終了
 	boardFull := g.isBoardFull()
 	log.Printf("Board full check: %v", boardFull)
-	
+
 	if boardFull {
 		log.Printf("Game ending - board is full")
 		g.GameOver = true

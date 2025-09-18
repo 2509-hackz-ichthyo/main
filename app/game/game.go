@@ -192,7 +192,7 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 		}
 		g.Board.Squares[x][y].Piece = &Piece{Color: color}
 		log.Printf("Applied confirmed move at (%d, %d) color %d", x, y, color)
-		
+
 		// オンラインモードでも手を記録
 		g.recordMove(x, y, color)
 	} else {
@@ -204,10 +204,10 @@ func (g *Game) handlePiecePlaced(message WSMessage) {
 		g.GameOver = true
 		g.calculateWinner()
 		log.Printf("Game ended! Winner: %s", g.Winner)
-		
+
 		// 対局記録を完了
 		g.finishGameRecord()
-		
+
 		// オンラインモードの場合は、サーバーに終了と対局データを送信
 		log.Printf("g.IsOnline: %v, g.State: %v, g.WSConnection: %v", g.IsOnline, g.State, g.WSConnection)
 		if g.IsOnline && g.State == GameStateInGame && g.WSConnection != nil {

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -622,6 +624,16 @@ func archiveGameData(dynamo *dynamodb.DynamoDB, gameFinished GameFinishedRequest
 		}
 	}
 
+	// Convert game data to whitespace format
+	whitespaceData, err := convertToWhitespace(gameDataText)
+	if err != nil {
+		fmt.Printf("Warning: Failed to convert to whitespace format: %v\n", err)
+		// エラーの場合は元のテキストを保存（後方互換性のため）
+		whitespaceData = gameDataText
+	} else {
+		fmt.Printf("Successfully converted game data to whitespace format\n")
+	}
+
 	// Create archive entry
 	archiveTableName := "game-archive"
 	gameId := gameFinished.RoomId // Using roomId as gameId for now
@@ -638,7 +650,7 @@ func archiveGameData(dynamo *dynamodb.DynamoDB, gameFinished GameFinishedRequest
 		"winner":    {S: aws.String(gameFinished.Winner)},
 		"gamePhase": {S: aws.String("FINISHED")},
 		"endTime":   {S: aws.String(now)},
-		"gameData":  {S: aws.String(gameDataText)},
+		"gameData":  {S: aws.String(whitespaceData)}, // Whitespace形式で保存
 		"ttl":       {N: aws.String(fmt.Sprintf("%d", ttl))},
 	}
 
@@ -745,6 +757,58 @@ func convertGameDataToText(gameData GameData) string {
 	}
 
 	return fmt.Sprintf("%s\n", strings.Join(lines, "\n"))
+}
+
+// WhitespaceConvertRequest はWhitespace変換API呼び出し用のリクエスト構造体
+type WhitespaceConvertRequest struct {
+	CommandType string   `json:"command_type"`
+	Payload     []string `json:"payload"`
+}
+
+// WhitespaceConvertResponse はWhitespace変換API呼び出し用のレスポンス構造体
+type WhitespaceConvertResponse struct {
+	CommandType             string   `json:"command_type"`
+	ResultWhitespace        []string `json:"result_whitespace"`
+	ResultWhitespaceEncoded []string `json:"result_whitespace_percent_encoded"`
+}
+
+// convertToWhitespace は対局データテキストをWhitespace形式に変換する
+func convertToWhitespace(gameDataText string) (string, error) {
+	apiURL := os.Getenv("WHITESPACE_API_URL")
+	if apiURL == "" {
+		return "", fmt.Errorf("WHITESPACE_API_URL not set")
+	}
+
+	reqBody := WhitespaceConvertRequest{
+		CommandType: "DecimalToWhitespace",
+		Payload:     []string{gameDataText},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %v", err)
+	}
+
+	resp, err := http.Post(apiURL+"/v1/decode", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to call API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status code: %d", resp.StatusCode)
+	}
+
+	var apiResp WhitespaceConvertResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %v", err)
+	}
+
+	if len(apiResp.ResultWhitespace) == 0 {
+		return "", fmt.Errorf("empty whitespace result")
+	}
+
+	return apiResp.ResultWhitespace[0], nil
 }
 
 func main() {
