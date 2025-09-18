@@ -25,6 +25,7 @@ func isValidPosition(x, y int) bool {
 
 // findFlankingPieces は(x, y)にコマを置いた時に挟まれるコマを見つける
 func (g *Game) findFlankingPieces(x, y int) [][]Position {
+	log.Println(g.GameRecord)
 	if !g.Board.Squares[x][y].IsEmpty() {
 		return nil
 	}
@@ -148,4 +149,17 @@ func (g *Game) placePiece(x, y int) bool {
 	}
 
 	return true
+}
+
+// getEmptySquares はボード上の全ての空きマスの座標を返す
+func (g *Game) getEmptySquares() []Position {
+	var emptySquares []Position
+	for x := 0; x < BoardSize; x++ {
+		for y := 0; y < BoardSize; y++ {
+			if g.Board.Squares[x][y].IsEmpty() {
+				emptySquares = append(emptySquares, Position{X: x, Y: y})
+			}
+		}
+	}
+	return emptySquares
 }

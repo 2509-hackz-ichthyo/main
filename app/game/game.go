@@ -310,6 +310,12 @@ func (g *Game) Update() error {
 		return nil
 	}
 
+	// Dキーでデバッグモード（ランダム自動配置）
+	if inpututil.IsKeyJustPressed(ebiten.KeyD) {
+		log.Printf("Debug mode: D key pressed - attempting random piece placement")
+		g.autoPlaceRandomPiece()
+	}
+
 	// マウスクリックを処理 (サーバ確定後にのみ配置: Optimistic Update 無効化)
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		mx, my := ebiten.CursorPosition()
@@ -475,4 +481,26 @@ func (g *Game) finishGameRecord() {
 	log.Printf("Game finished: GameID=%s, Winner=%s, Turns=%d, Duration=%s to %s",
 		g.GameRecord.GameID, g.GameRecord.Winner, g.GameRecord.TurnCount,
 		g.GameRecord.StartTime, g.GameRecord.EndTime)
+}
+
+// autoPlaceRandomPiece はランダムな空きマスにコマを自動配置する
+func (g *Game) autoPlaceRandomPiece() bool {
+	emptySquares := g.getEmptySquares()
+	if len(emptySquares) == 0 {
+		log.Printf("Debug mode: No empty squares available")
+		return false
+	}
+
+	// ランダム選択
+	randomIndex := g.Rand.Intn(len(emptySquares))
+	selectedPos := emptySquares[randomIndex]
+
+	// 配置実行
+	success := g.placePiece(selectedPos.X, selectedPos.Y)
+	if success {
+		log.Printf("Debug mode: Auto-placed piece at (%d, %d)", selectedPos.X, selectedPos.Y)
+	} else {
+		log.Printf("Debug mode: Failed to place piece at (%d, %d)", selectedPos.X, selectedPos.Y)
+	}
+	return success
 }

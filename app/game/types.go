@@ -68,6 +68,9 @@ type Game struct {
 
 	// 対局記録関連
 	GameRecord *GameRecord // 対局記録
+
+	// デバッグモード関連
+	DebugMode bool // デバッグモードフラグ
 }
 
 // Position はボード上の位置を表す
