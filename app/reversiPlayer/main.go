@@ -8,18 +8,23 @@ import (
 	"syscall/js"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"golang.org/x/image/font/basicfont"
 )
 
 type Game struct {
-	gameData    *GameData // パースした対局データ
-	board       *Board    // 現在のボード状態
-	currentMove int       // 現在の手数
-	timer       float64   // 経過時間（秒）
-	interval    float64   // コマ配置間隔（3秒）
-	isPlaying   bool      // 再生中フラグ
-	is24Mode    bool      // 24-7モードフラグ
-	isLoading   bool      // データ読み込み中フラグ
+	gameData         *GameData // パースした対局データ
+	board            *Board    // 現在のボード状態
+	currentMove      int       // 現在の手数
+	timer            float64   // 経過時間（秒）
+	interval         float64   // コマ配置間隔（3秒）
+	isPlaying        bool      // 再生中フラグ
+	is24Mode         bool      // 24-7モードフラグ
+	isLoading        bool      // データ読み込み中フラグ
+	gameOver         bool      // ゲーム終了フラグ
+	winner           string    // 勝者（"黒" または "白"）
+	resultDisplayTime float64   // 勝敗表示時間（秒）
 }
 
 // GameArchive はAPIから返される対局データの構造体
@@ -131,6 +136,37 @@ func colorToRGB(c uint8) color.RGBA {
 	return color.RGBA{R: c, G: c, B: c, A: 255}
 }
 
+// calculateWinner は全駒の色の平均値から勝者を決定する
+func (g *Game) calculateWinner() {
+	var colorSum int
+	var pieceCount int
+
+	for x := 0; x < BoardSize; x++ {
+		for y := 0; y < BoardSize; y++ {
+			if !g.board.Squares[x][y].IsEmpty() {
+				colorSum += int(g.board.Squares[x][y].Piece.Color)
+				pieceCount++
+			}
+		}
+	}
+
+	if pieceCount == 0 {
+		g.winner = "引き分け"
+		return
+	}
+
+	average := float64(colorSum) / float64(pieceCount)
+
+	// 平均値が127.5未満なら黒、以上なら白の勝利
+	if average < 127.5 {
+		g.winner = "黒"
+	} else {
+		g.winner = "白"
+	}
+	
+	fmt.Printf("対局終了！平均色値: %.2f, 勝者: %s\n", average, g.winner)
+}
+
 // checkIs24Mode はURLから24-7モードかどうかを判定する
 func checkIs24Mode() bool {
 	location := js.Global().Get("location")
@@ -210,7 +246,7 @@ func (g *Game) initializeBoard() {
 
 // NewGame は新しいゲームインスタンスを作成する
 func NewGame() *Game {
-	is24Mode := checkIs24Mode()
+	is24Mode := true
 
 	game := &Game{
 		currentMove: -1,    // まだ何も置いていない状態
@@ -249,15 +285,15 @@ func (g *Game) loadMockData() {
 		fmt.Printf("モックデータ解析エラー: %v\n", err)
 		return
 	}
-
+	
 	g.gameData = gameData
 	g.initializeBoard() // 初期盤面を設定
+	g.gameOver = false  // ゲームオーバーフラグをリセット
+	g.winner = ""       // 勝者をリセット
 	g.isLoading = false
 	g.isPlaying = true
 	fmt.Printf("モックデータ読み込み完了。総手数: %d\n", gameData.GetMoveCount())
-}
-
-// loadNext24Data は24-7モード用の次の対局データを読み込む
+}// loadNext24Data は24-7モード用の次の対局データを読み込む
 func (g *Game) loadNext24Data() error {
 	fmt.Println("ランダム対局データを取得中...")
 
@@ -281,6 +317,8 @@ func (g *Game) loadNext24Data() error {
 	g.initializeBoard() // 初期盤面を設定
 	g.currentMove = -1  // 手数をリセット
 	g.timer = 0         // タイマーリセット
+	g.gameOver = false  // ゲームオーバーフラグをリセット
+	g.winner = ""       // 勝者をリセット
 	g.isLoading = false
 	g.isPlaying = true
 
@@ -290,7 +328,32 @@ func (g *Game) loadNext24Data() error {
 
 func (g *Game) Update() error {
 	// データ読み込み中は更新しない
-	if g.isLoading || !g.isPlaying {
+	if g.isLoading {
+		return nil
+	}
+
+	// 勝敗表示中の処理
+	if g.gameOver {
+		g.resultDisplayTime -= 1.0 / 60.0  // タイマーを減らす
+		if g.resultDisplayTime <= 0 {
+			// 24-7モードの場合、次の対局を自動読み込み
+			if g.is24Mode {
+				fmt.Println("次の対局を読み込み中...")
+				g.isLoading = true
+				g.gameOver = false  // ゲームオーバーフラグをリセット
+				go func() {
+					if err := g.loadNext24Data(); err != nil {
+						fmt.Printf("次の対局読み込みエラー: %v\n", err)
+						// エラー時は1秒後に再試行
+					}
+				}()
+			}
+		}
+		return nil
+	}
+
+	// 通常の再生処理
+	if !g.isPlaying {
 		return nil
 	}
 
@@ -316,19 +379,10 @@ func (g *Game) placeNextPiece() {
 	if g.currentMove+1 >= g.gameData.GetMoveCount() {
 		fmt.Println("対局終了")
 		g.isPlaying = false
+		g.gameOver = true
+		g.calculateWinner()  // 勝者を計算
+		g.resultDisplayTime = 3.0  // 3秒間勝敗を表示
 
-		// 24-7モードの場合、次の対局を自動読み込み
-		if g.is24Mode {
-			fmt.Println("次の対局を読み込み中...")
-			g.isLoading = true
-			go func() {
-				if err := g.loadNext24Data(); err != nil {
-					fmt.Printf("次の対局読み込みエラー: %v\n", err)
-					// エラー時は1秒後に再試行
-					// TODO: より堅牢なエラーハンドリングを追加
-				}
-			}()
-		}
 		return
 	}
 
@@ -376,6 +430,40 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// コマを描画
 	g.drawPieces(screen)
+
+	// ゲーム終了時の勝利メッセージ表示
+	if g.gameOver {
+		// 簡単な勝利メッセージを画面中央に表示
+		message := fmt.Sprintf("どちらかというと %s の勝利！", g.winner)
+		
+		// 背景の四角形を描画（見やすくするため）
+		bgX := float32(200)
+		bgY := float32(280)
+		bgWidth := float32(400)
+		bgHeight := float32(40)
+
+		vector.DrawFilledRect(screen, bgX, bgY, bgWidth, bgHeight, color.RGBA{255, 255, 255, 240}, false)
+		vector.StrokeRect(screen, bgX, bgY, bgWidth, bgHeight, 3, color.Black, false)
+
+		// TODO: テキスト描画ライブラリを使ってメッセージを表示
+		// 勝者テキストを表示
+		winnerText := ""
+		if g.winner == "Black" {
+			winnerText = "黒の勝利!"
+		} else if g.winner == "White" {
+			winnerText = "白の勝利!"
+		} else {
+			winnerText = "引き分け!"
+		}
+		
+		// テキストの位置を計算（中央揃え）
+		textX := int(bgX) + 200 - len(winnerText)*6 // 概算での中央揃え
+		textY := int(bgY) + 25
+		text.Draw(screen, winnerText, basicfont.Face7x13, textX, textY, color.Black)
+		
+		// 現在はコンソールに表示のみ（ブラウザの開発者ツールで確認可能）
+		fmt.Printf("表示中: %s\n", message)
+	}
 }
 
 // drawPieces はボード上のコマを描画する
